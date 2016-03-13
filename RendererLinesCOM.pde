@@ -3,7 +3,6 @@ import controlP5.*;
 
 class RendererLinesCOM extends Renderer{
   Group settingsGroup;
-  int lineToDraw = 0;
   int numberLines = 0;
   int numberSegments = 0;
   int canvasVertOffset; 
@@ -24,10 +23,10 @@ class RendererLinesCOM extends Renderer{
     cp5.addSlider("cellWidth")
      .setLabel("cell Width")
      .setPosition(5, controlsVOffset)
-     .setRange(1,15)
+     .setRange(1,35)
      .setGroup(settingsGroup)
      .setValue(10)
-     .setNumberOfTickMarks(15)
+     .setNumberOfTickMarks(35)
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
@@ -46,10 +45,10 @@ class RendererLinesCOM extends Renderer{
    cp5.addSlider("sampleWidth")
      .setLabel("sample width")
      .setPosition(cp5.get("cellHeight").getWidth() + cp5.get("cellHeight").getPosition()[0] + 100, controlsVOffset)
-     .setRange(1,15)
+     .setRange(1,25)
      .setGroup(settingsGroup)
      .setValue(1)
-     .setNumberOfTickMarks(15)
+     .setNumberOfTickMarks(25)
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
@@ -57,10 +56,10 @@ class RendererLinesCOM extends Renderer{
    cp5.addSlider("sampleHeight")
      .setLabel("sample height")
      .setPosition(cp5.get("sampleWidth").getPosition()[0], cp5.get("sampleWidth").getHeight() + cp5.get("sampleWidth").getPosition()[1] + controlsVOffset)
-     .setRange(3,21)
+     .setRange(1,21)
      .setGroup(settingsGroup)
      .setValue(11)
-     .setNumberOfTickMarks(19)
+     .setNumberOfTickMarks(21)
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
@@ -158,88 +157,113 @@ class RendererLinesCOM extends Renderer{
   
   public int[] processImage(PImage img){ 
     println("processing");
-    lineToDraw=0;
     numberLines = floor(img.height / getCellHeight());
     numberSegments = floor(img.width / getCellWidth());
+    
+    lines= new int[0][0][0];
+    
+    for (int line=0; line <= numberLines; line++){
+      int thisY = line*getCellHeight();
+      // get sample range for Y axis
+      int topOfSample;
+      int bottomOfSample;
+      if (getSampleHeight()>1){
+        int halfOfSample = floor(getSampleHeight()/2);
+        topOfSample = thisY - halfOfSample;
+        if (topOfSample<0) topOfSample = 0;
+        bottomOfSample = thisY + halfOfSample;
+        if (bottomOfSample>=img.height) bottomOfSample = img.height-1;
+      } else {
+        topOfSample = thisY;
+        bottomOfSample = thisY;
+      }
+      
+      
+      int[][] points = {};
+    
+      for (int i=0; i <= numberSegments; i++){ 
+        int thisX = i*getCellWidth();
+        int leftOfSample;
+        int rightOfSample;
+        // get sample range for X axis, only currently used for average calc (not COM).
+        if (getSampleWidth()>1){
+          int halfOfSample = floor(getSampleWidth()/2);
+          leftOfSample = thisX - halfOfSample;
+          if (leftOfSample<0) leftOfSample = 0;
+          rightOfSample = thisX + halfOfSample;
+          if (rightOfSample>=img.width) rightOfSample = img.width-1;
+        } else {
+          leftOfSample = thisX;
+          rightOfSample = thisX;
+        }
+        
+        float[] samples = new float[0];
+        
+        float weightedMass=0;
+        float totalMass=0;
+        int thisAdjY=0;
+        if (this.getCOM()==1){
+          // calculate the center of mass
+          for (int s=topOfSample; s<=bottomOfSample; s++){
+            int loc = (thisX + s*img.width);
+            // brightness is 0-255 where 255 is white, we want black to have the most mass so we invert that scale.
+            float thisMass = 255-brightness(img.pixels[loc]);
+            samples = (float[]) append (samples, thisMass);
+            
+            totalMass += thisMass;
+            weightedMass += thisMass*(s-topOfSample);
+          }
+          thisAdjY = round(weightedMass/totalMass)+topOfSample;
+        } else {
+          // calculate the average brightness
+          for (int sX=leftOfSample; sX<=rightOfSample; sX++){
+            for (int sY=topOfSample; sY<=bottomOfSample; sY++){
+              int loc = (sX + sY*img.width);
+              // brightness is 0-255 where 255 is white, we want black to have the most mass so we invert that scale.
+              totalMass += brightness(img.pixels[loc]);
+            }
+          }
+          float averageMass = totalMass/(getSampleHeight()*getSampleWidth());
+          thisAdjY = canvasVertOffset+(line*getVertOffset())-(int)(this.getVertScale()*averageMass/255);
+        }
+        
+        // repeat the first and last points to add controls for them
+        if (i==0) points = (int[][])append(points, new int[] {thisX*getScaleFactor(), thisAdjY*getScaleFactor()});
+        if (i==numberSegments-1) points = (int[][])append(points, new int[] {thisX*getScaleFactor(), thisAdjY*getScaleFactor()});
+        points = (int[][])append(points, new int[] {thisX*getScaleFactor(), thisAdjY*getScaleFactor()});
+      }
+      lines = (int[][][])append(lines, points);
+    }
+    
+    
+    // TODO: return a more accurate canvas size (and add canvas offsets so that things fit). will probably need to give some buffy in the Y directions due to curves?
     
     int[] wh = new int[2];
     wh[0] = img.width*getScaleFactor();
     wh[1] = (int)2.5*img.height*getScaleFactor();
     canvasVertOffset = img.height*getScaleFactor();
-    lines= new int[0][0][0];
     return wh;
   }
       
   public int draw(PGraphics displayCanvas, PImage image){
     displayCanvas.beginDraw();
     displayCanvas.stroke(100, 255); 
-    
-    int thisY = lineToDraw*getCellHeight();
-    
-    int halfOfSample = floor(getSampleHeight()/2);
-    int topOfSample = thisY - halfOfSample;
-    if (topOfSample<0) topOfSample = 0;
-    int bottomOfSample = thisY + halfOfSample;
-    if (bottomOfSample>=image.height) bottomOfSample = image.height-1;
-    int prevX = -1;
-    int prevY = -1;
-    int[][] points = {};
-    
     displayCanvas.curveTightness(getCurveTightness());
-    displayCanvas.beginShape();
     displayCanvas.noFill();
-    for (int i=0; i <= numberSegments; i++){ 
-      int thisX = i*getCellWidth();
-      float[] samples = new float[0];
-      
-      float weightedMass=0;
-      float totalMass=0;
-      int thisAdjY=0;
-      if (this.getCOM()==1){
-        for (int s=topOfSample; s<bottomOfSample; s++){
-          int loc = (thisX + s*image.width);
-          // brightness is 0-255 where 255 is white, we want black to have the most mass so we invert that scale.
-          float thisMass = 255-brightness(image.pixels[loc]);
-          samples = (float[]) append (samples, thisMass);
-          
-          totalMass += thisMass;
-          weightedMass += thisMass*(s-topOfSample);
-        }
-        thisAdjY = round(weightedMass/totalMass)+topOfSample;
-      } else {
-        int loc = (thisX + thisY*image.width);
-        thisAdjY = canvasVertOffset+(lineToDraw*getVertOffset())-(int)(this.getVertScale()*brightness(image.pixels[loc])/255);
-      }
-      
-      
-      // TODO: better to do processing in processImage and return a more accurate canvas size (and add canvas offsets so that things fit).
-      // TODO: check that the sample height is used. 
-      // TODO: see if inplementing sample width might help smooth the vectors that are output
-      // repeat the first and last points to add controls for them
-      if (i==0) points = (int[][])append(points, this.addCurvePoint(displayCanvas, thisX*getScaleFactor(), thisAdjY*getScaleFactor()));
-      if (i==numberSegments-1) points = (int[][])append(points, this.addCurvePoint(displayCanvas, thisX*getScaleFactor(), thisAdjY*getScaleFactor()));
-      points = (int[][])append(points, this.addCurvePoint(displayCanvas, thisX*getScaleFactor(), thisAdjY*getScaleFactor()));
-      
-      prevX=thisX;
-      prevY=thisAdjY;
-    }
-    lines = (int[][][])append(lines, points);
-    displayCanvas.endShape();
-    displayCanvas.endDraw();
-    lineToDraw++;
-    cp5.get("progress").setValue((int)((float)lineToDraw/numberLines*100));
-    if (lineToDraw > numberLines){
-      return DRAWING_DONE;
-    } else {
-      return DRAWING;
-    }
-  }
-  
-  int[] addCurvePoint(PGraphics displayCanvas, int x, int y){
-    displayCanvas.curveVertex(x, y);
     
-    int[] coords = {x, y};
-    return coords;
+    
+    for (int line = 0; line<lines.length; line++){
+      // lines contain points
+      displayCanvas.beginShape();
+      for (int point = 0; point<lines[line].length-1; point++){
+        // poits contain coordinates
+        println(lines[line][point][0]+" "+ lines[line][point][1]);
+        displayCanvas.curveVertex(lines[line][point][0], lines[line][point][1]);
+      }
+      displayCanvas.endShape();
+    }
+    displayCanvas.endDraw();
+    return DRAWING_DONE;
   }
   
   public String[] getSVGData(String[] FileOutput, PImage image){ 
