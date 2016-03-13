@@ -2,7 +2,8 @@ import controlP5.*;
 
 class RendererHatching extends Renderer{  
   Group settingsGroup;
-  int lineToDraw;
+  int startIndex;
+  int linesPerDraw;
   int sampleIndex;
   int numberLines;
   int numberPoints;
@@ -150,14 +151,14 @@ class RendererHatching extends Renderer{
   }
   
   public int[] processImage(PImage img){ 
-    lineToDraw=0;
+    lines = new float[0][0];
     sampleIndex=0;
     numberLines = floor(img.height / getCellHeight());
     numberPoints = floor(img.width / getCellWidth());
     
+    
     values = new int[0];
     // determine brightness values for the cells
-    
     for (int line=0; line<= numberLines; line++){
       
       int yVal = (line * getCellHeight())+getCellHeight()/2;
@@ -180,57 +181,74 @@ class RendererHatching extends Renderer{
         int brightness = sampledValue/sampledNumber;
         values=append(values, brightness);
       } 
+      print("-");
     }
+    println();
+    
+    // determine lines
+    for (int line=0; line<= numberLines; line++){
+      int yVal = getFactor()*(line * getCellHeight())+getCellHeight()/2;
+      for (int i = 0; i<numberPoints; i++){
+        int xVal = getFactor()*(i*getCellWidth())+(getCellWidth()/2);
+        int darkness = (255-values[sampleIndex])/2;
+        for (int hatch=0; hatch<darkness; hatch++){
+          // completely random is interesting but is similar to pixelation (grid is apparent)
+          //displayCanvas.line( xVal+random(getFactor()*-getCellWidth(),getFactor()*getCellWidth()), 
+          //                    yVal+random(getFactor()*-getCellHeight(),getFactor()*getCellHeight()), 
+          //                    xVal+random(getFactor()*-getCellWidth(),getFactor()*getCellWidth()), 
+          //                    yVal+random(getFactor()*-getCellHeight(),getFactor()*getCellHeight()));
+          
+          // consistent hatches has a good feel to it
+          //float x1 = xVal+random(getFactor()*-getCellWidth()/2,getFactor()*getCellWidth()/2);
+          //float y1 = yVal+random(getFactor()*-getCellHeight()/2,getFactor()*getCellHeight()/2);
+          //float x2 = x1+cos(-getHatchRadians())*getHatchLength();
+          //float y2 = y1+sin(-getHatchRadians())*getHatchLength();
+          //displayCanvas.line( x1, 
+          //                    y1, 
+          //                    x2, 
+          //                    y2);
+          
+          // adding randomness is also nice 
+          float ranRadians = random(0,getHatchRadiansVariation());
+          float ranLength = random(0,getHatchLength()*getHatchLengthVariation());
+          float x1 = xVal+random(getFactor()*-getCellWidth()/2,getFactor()*getCellWidth()/2);
+          float y1 = yVal+random(getFactor()*-getCellHeight()/2,getFactor()*getCellHeight()/2);
+          float x2 = x1+cos(-getHatchRadians() + ranRadians) * (getHatchLength() - ranLength);
+          float y2 = y1+sin(-getHatchRadians() + ranRadians) * (getHatchLength() - ranLength);
+          
+          float[] coords = {x1, y1, x2, y2};
+          lines = (float[][])append(lines, coords);
+          
+        }
+        sampleIndex++;
+      } 
+      print(".");
+    }
+    println();
+    
+    startIndex=0;
+    linesPerDraw=lines.length/numberLines;
     
     int[] wh = new int[2];
     wh[0] = img.width*getFactor();
     wh[1] = img.height*getFactor();
     return wh;
   }
-  
-    
+ 
   public int draw(PGraphics displayCanvas, PImage image){
     displayCanvas.beginDraw();
     displayCanvas.stroke(0, getAlpha());
     
-    int yVal = getFactor()*(lineToDraw * getCellHeight())+getCellHeight()/2;
-    for (int i = 0; i<numberPoints; i++){
-      int xVal = getFactor()*(i*getCellWidth())+(getCellWidth()/2);
-      int darkness = (255-values[sampleIndex])/2;
-      for (int hatch=0; hatch<darkness; hatch++){
-        // completely random is interesting but is similar to pixelation (grid is apparent)
-        //displayCanvas.line( xVal+random(getFactor()*-getCellWidth(),getFactor()*getCellWidth()), 
-        //                    yVal+random(getFactor()*-getCellHeight(),getFactor()*getCellHeight()), 
-        //                    xVal+random(getFactor()*-getCellWidth(),getFactor()*getCellWidth()), 
-        //                    yVal+random(getFactor()*-getCellHeight(),getFactor()*getCellHeight()));
-        
-        // consistent hatches has a good feel to it
-        //float x1 = xVal+random(getFactor()*-getCellWidth()/2,getFactor()*getCellWidth()/2);
-        //float y1 = yVal+random(getFactor()*-getCellHeight()/2,getFactor()*getCellHeight()/2);
-        //float x2 = x1+cos(-getHatchRadians())*getHatchLength();
-        //float y2 = y1+sin(-getHatchRadians())*getHatchLength();
-        //displayCanvas.line( x1, 
-        //                    y1, 
-        //                    x2, 
-        //                    y2);
-        
-        // adding randomness is also nice 
-        float ranRadians = random(0,getHatchRadiansVariation());
-        float ranLength = random(0,getHatchLength()*getHatchLengthVariation());
-        float x1 = xVal+random(getFactor()*-getCellWidth()/2,getFactor()*getCellWidth()/2);
-        float y1 = yVal+random(getFactor()*-getCellHeight()/2,getFactor()*getCellHeight()/2);
-        float x2 = x1+cos(-getHatchRadians() + ranRadians) * (getHatchLength() - ranLength);
-        float y2 = y1+sin(-getHatchRadians() + ranRadians) * (getHatchLength() - ranLength);
-        displayCanvas.line( x1, 
-                           y1, 
-                           x2, 
-                           y2);
-      }
-      sampleIndex++;
-    } 
+    int endIndex = startIndex+linesPerDraw;
+    if (endIndex>lines.length) endIndex=lines.length; 
+    
+    for (int i = startIndex; i<endIndex; i++){
+      displayCanvas.line(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
+    }
+    startIndex = endIndex;
     displayCanvas.endDraw();
-    lineToDraw++;
-    if (lineToDraw >= numberLines){
+    
+    if (startIndex >= lines.length){
       return DRAWING_DONE;
     } else {
       return DRAWING;
@@ -238,8 +256,12 @@ class RendererHatching extends Renderer{
   }
 
   public String[] getSVGData(String[] FileOutput, PImage image){ 
-    
-    // TODO: finish this
+    String rowTemp;
+    for (int i = 0; i<lines.length; i++){
+      rowTemp = "<line stroke=\"black\" stroke-width=\"1\" x1=\"" + lines[i][0] + "\" y1=\"" + lines[i][1] + "\" x2=\"" + lines[i][2] + "\" y2=\"" + lines[i][3] + "\" stroke-opacity=\""+getAlpha()/100.0+"\"/>";
+      FileOutput = append(FileOutput, rowTemp);
+          
+    }
     return FileOutput;
   }
 }
