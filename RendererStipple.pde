@@ -91,14 +91,6 @@ class RendererStipple extends Renderer{
     return (int) cp5.getController("sampleSize").getValue();
   }
   
-  private int getMinRadius(){
-    return (int) cp5.getController("minRadius").getValue();
-  }
-  
-  private int getMaxRadius(){
-    return (int) cp5.getController("maxRadius").getValue();
-  }
-  
   private int getFactor(){
     return (int) cp5.getController("factor").getValue();
   }
@@ -196,17 +188,12 @@ class RendererStipple extends Renderer{
   }
 
   public String[] getSVGData(String[] FileOutput, PImage image){ 
-    
-    // TODO: finish this
-    
     String rowTemp;
-    
     for (int i = 0; i<ellipses.length; i++){
       rowTemp = "<circle cx=\"" + ellipses[i][0] + "\" cy=\"" + ellipses[i][1] + "\" r=\"" + ellipses[i][2]/2.0 + "\" fill-opacity=\""+getAlpha()/100.0+"\"/>";
       FileOutput = append(FileOutput, rowTemp);
           
     }
-   
     return FileOutput;
   }
 }

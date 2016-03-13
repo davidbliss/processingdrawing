@@ -7,6 +7,7 @@ class RendererHatching extends Renderer{
   int numberLines;
   int numberPoints;
   int[] values;
+  float[][] lines = {};
   
   RendererHatching(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
     settingsGroup = cp5.addGroup("settingsGroup")
@@ -122,14 +123,6 @@ class RendererHatching extends Renderer{
   
   private int getSampleSize(){
     return (int) cp5.getController("sampleSize").getValue();
-  }
-  
-  private int getMinRadius(){
-    return (int) cp5.getController("minRadius").getValue();
-  }
-  
-  private int getMaxRadius(){
-    return (int) cp5.getController("maxRadius").getValue();
   }
   
   private int getFactor(){
