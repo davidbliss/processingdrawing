@@ -7,7 +7,7 @@ class RendererHalftone extends Renderer{
   int lineToDraw;
   int numberLines;
   int numberPoints;
-  int[] values;
+  int[][] values;
   
   RendererHalftone(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
     println("creating RendererHalftone");
@@ -131,22 +131,70 @@ class RendererHalftone extends Renderer{
     numberLines = floor(img.height / getCellHeight());
     numberPoints = floor(img.width / getCellWidth());
     
-    values = new int[0];
+    values = new int[0][0];
+    for (int line=0; line<= numberLines; line++){
+      int offset=0;
+      if(line % 2==1){
+        offset=getRowOffset();
+      } 
+      int yVal = (line * getCellHeight())+getCellHeight()/2;
+      for (int i = 0; i<numberPoints; i++){
+        if (offset>0 && i==numberPoints-1){
+          // don't do anything
+        } else {
+          int xVal = (i*getCellWidth())+(getCellWidth()/2)+offset;
+          
+          int sampleMinX = max(0, xVal-(getSampleSize()/2));
+          int sampleMaxX = min(img.width, xVal+(getSampleSize()/2));
+          int sampleMinY = max(0, yVal-(getSampleSize()/2));
+          int sampleMaxY = min(img.height, yVal+(getSampleSize()/2));
+          
+          int sampledValue=0;
+          int sampledNumber=0;
+          for (int y = sampleMinY; y < sampleMaxY; y++){
+            for (int x = sampleMinX; x < sampleMaxX; x++){
+              sampledValue+=(255 - brightness(img.pixels[y*img.width+x]));
+              sampledNumber++;
+            }
+          }
+          float size = (sampledValue/sampledNumber)/255.0;
+          // scale based on desired radius range
+          int radius = getMinRadius() + (int)(size*(getMaxRadius()-getMinRadius())); 
+  
+          //save for SVG
+          int[] coords = new int[] {xVal, yVal,radius};
+          values = (int[][]) append(values, coords);
+        }
+      }    
+    }
+    
+    // find the minimum and maximum
+    int minX = 0, minY = 0, maxX = 0, maxY = 0;
+    for (int i = 0; i<values.length; i++){
+      if (values[i][0]-values[i][2] < minX) minX = values[i][0]-values[i][2];
+      if (values[i][0]+values[i][2] > maxX) maxX = values[i][0]+values[i][2];
+      
+      if (values[i][1]-values[i][2] < minY) minY = values[i][1]-values[i][2];
+      if (values[i][1]+values[i][2] > maxY) maxY = values[i][1]+values[i][2];
+    } 
+    // if mins are less than 0 offset all values
+    for (int i = 0; i<values.length; i++){
+      values[i][0] -= minX;
+    }
+    maxX -= minX;
+    
+    for (int i = 0; i<values.length; i++){
+      values[i][1] -= minY;
+    }
+    maxY -= minY;
     
     int[] wh = new int[2];
-    wh[0] = img.width;
-    wh[1] = img.height;
+    wh[0] = maxX;
+    wh[1] = maxY;
     return wh;
   }
       
   public int draw(PGraphics displayCanvas, PImage image){
-    int offset=0;
-    if(lineToDraw % 2==1){
-      offset=getRowOffset();
-    } 
-    // TODO: better to do processing in processImage and return a more accurate canvas size (and add canvas offsets so that things fit).
-    
-    int yVal = (lineToDraw * getCellHeight())+getCellHeight()/2;
     displayCanvas.beginDraw();
     if (getFill()==1){
       displayCanvas.fill(0,0,0);
@@ -155,69 +203,22 @@ class RendererHalftone extends Renderer{
       displayCanvas.stroke(0,0,0);
       displayCanvas.noFill();
     }
-    for (int i = 0; i<numberPoints; i++){
-      if (offset>0 && i==numberPoints-1){
-        // don't do anything
-      } else {
-        int xVal = (i*getCellWidth())+(getCellWidth()/2)+offset;
-        
-        int sampleMinX = max(0, xVal-(getSampleSize()/2));
-        int sampleMaxX = min(image.width, xVal+(getSampleSize()/2));
-        int sampleMinY = max(0, yVal-(getSampleSize()/2));
-        int sampleMaxY = min(image.height, yVal+(getSampleSize()/2));
-        
-        int sampledValue=0;
-        int sampledNumber=0;
-        for (int y = sampleMinY; y < sampleMaxY; y++){
-          for (int x = sampleMinX; x < sampleMaxX; x++){
-            sampledValue+=(255 - brightness(image.pixels[y*image.width+x]));
-            sampledNumber++;
-          }
-        }
-        float size = (sampledValue/sampledNumber)/255.0;
-        // scale based on desired radius range
-        int radius = getMinRadius() + (int)(size*(getMaxRadius()-getMinRadius())); 
-
-        //save for SVG
-        values=append(values, radius);
-        
-        displayCanvas.ellipse(xVal, yVal, radius*2, radius*2);
-      }
-    }    
-    displayCanvas.endDraw();
-    lineToDraw++;
-    cp5.get("progress").setValue((int)((float)lineToDraw/numberLines*100));
-    if (lineToDraw > numberLines){
-      return DRAWING_DONE;
-    } else {
-      return DRAWING;
+    
+    for (int i=0; i<values.length; i++){
+      displayCanvas.ellipse(values[i][0], values[i][1], values[i][2]*2, values[i][2]*2);
     }
+    displayCanvas.endDraw();
+      
+    return DRAWING;
   }
   
   public String[] getSVGData(String[] FileOutput, PImage image){ 
-    String rowTemp;
-    int sampleIndex=0;
-    for (int line=0; line<= numberLines; line++){
-      int offset=0;
-      if(line % 2==1){
-        offset=getRowOffset();
-      } 
-      
-      int yVal = (line * getCellHeight())+getCellHeight()/2;
-      for (int i = 0; i<numberPoints; i++){
-        if (offset>0 && i==numberPoints-1){
-          // don't do anything
-        } else {
-          int xVal = (i*getCellWidth())+(getCellWidth()/2)+offset;
-          int radius = values[sampleIndex];
-          
-          rowTemp = "<circle";
-          if (getFill()==0) rowTemp += " fill=\"none\" stroke=\"black\" stroke-width=\"1\"";
-          rowTemp += " cx=\"" + xVal + "\" cy=\"" + yVal + "\" r=\"" + radius + "\"/>";
-          FileOutput = append(FileOutput, rowTemp);
-          sampleIndex++;
-        }
-      }    
+    String rowTemp; 
+    for (int i = 0; i<values.length; i++){  
+      rowTemp = "<circle";
+      if (getFill()==0) rowTemp += " fill=\"none\" stroke=\"black\" stroke-width=\"1\"";
+      rowTemp += " cx=\"" + values[i][0] + "\" cy=\"" + values[i][1] + "\" r=\"" + values[i][2] + "\"/>";
+      FileOutput = append(FileOutput, rowTemp);
     }
     return FileOutput;
   }
