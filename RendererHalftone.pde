@@ -67,10 +67,10 @@ class RendererHalftone extends Renderer{
    cp5.addSlider("minRadius")
      .setLabel("min radius")
      .setPosition(cp5.get("cellHeight").getPosition()[0], cp5.get("cellHeight").getHeight() + cp5.get("cellHeight").getPosition()[1] + controlsVOffset)
-     .setRange(1,40)
+     .setRange(0,40)
      .setGroup(settingsGroup)
      .setValue(2)
-     .setNumberOfTickMarks(40)
+     .setNumberOfTickMarks(41)
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
@@ -195,9 +195,6 @@ class RendererHalftone extends Renderer{
   }
   
   public String[] getSVGData(String[] FileOutput, PImage image){ 
-    // TODO: SVG needs to take fill into account
-    
-    
     String rowTemp;
     int sampleIndex=0;
     for (int line=0; line<= numberLines; line++){
@@ -214,7 +211,9 @@ class RendererHalftone extends Renderer{
           int xVal = (i*getCellWidth())+(getCellWidth()/2)+offset;
           int radius = values[sampleIndex];
           
-          rowTemp = "<circle cx=\"" + xVal + "\" cy=\"" + yVal + "\" r=\"" + radius + "\"/>";
+          rowTemp = "<circle";
+          if (getFill()==0) rowTemp += " fill=\"none\" stroke=\"black\" stroke-width=\"1\"";
+          rowTemp += " cx=\"" + xVal + "\" cy=\"" + yVal + "\" r=\"" + radius + "\"/>";
           FileOutput = append(FileOutput, rowTemp);
           sampleIndex++;
         }

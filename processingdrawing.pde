@@ -11,7 +11,6 @@ Group imageGroup;
 Group filterGroup;
 Group drawingGroup;
 
-
 Renderer renderer; 
 
 PImage img;
