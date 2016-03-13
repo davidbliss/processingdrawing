@@ -339,10 +339,6 @@ void mousePressed(){
 void mouseReleased(){
   switch(appState){
     case CROPPING:
-      int x;
-      int y;
-      int w;
-      int h;
       if (cropStartX<mouseX){
         cropX = cropStartX;
         cropW = mouseX-cropStartX;
@@ -360,8 +356,7 @@ void mouseReleased(){
         cropH = cropStartY - mouseY;
         cropStartY = mouseY;
       }
-      
-      //crop = img.get(cropX, cropY, cropW, cropH);
+   
       cropped = true;
       
       appState = DISPLAYING_IMAGE;

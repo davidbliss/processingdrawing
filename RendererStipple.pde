@@ -99,14 +99,6 @@ class RendererStipple extends Renderer{
     return (int) cp5.getController("drawPointAlpha").getValue();
   }
   
-  private float getHatchRadians(){
-    return cp5.getController("hatchRadians").getValue();
-  }
-  
-  private int getHatchLength(){
-    return (int) cp5.getController("hatchLength").getValue();
-  }
-  
   public int[] processImage(PImage img){ 
     println("processing image begun");
     ellipses = new float[0][0];
