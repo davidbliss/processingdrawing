@@ -11,8 +11,6 @@ class RendererNearPoints extends Renderer{
   Group settingsGroup;
   
   RendererNearPoints(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
-    println("creating RendererNearPoints");
-   
     settingsGroup = cp5.addGroup("settingsGroup")
     .setLabel("render settings")
     .setPosition(settingsGroupX, settingsGroupY)

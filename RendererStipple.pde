@@ -2,15 +2,15 @@ import controlP5.*;
 
 class RendererStipple extends Renderer{  
   Group settingsGroup;
-  int lineToDraw;
+  int startIndex;
+  int ellipsesPerDraw;
   int sampleIndex;
   int numberLines;
   int numberPoints;
   int[] values;
+  float[][] ellipses = {};
   
   RendererStipple(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
-    println("creating RendererNearPoints");
-   
     settingsGroup = cp5.addGroup("settingsGroup")
     .setLabel("render settings")
     .setPosition(settingsGroupX, settingsGroupY)
@@ -62,6 +62,17 @@ class RendererStipple extends Renderer{
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
+     
+   cp5.addSlider("drawPointAlpha")
+     .setLabel("point alpha")
+     .setPosition(5, cp5.get("factor").getHeight() + cp5.get("factor").getPosition()[1] + controlsVOffset)
+     .setRange(0,100)
+     .setGroup(settingsGroup)
+     .setValue(10)
+     .setNumberOfTickMarks(101)
+     .showTickMarks(false)
+     .snapToTickMarks(true)
+     ;
   }
   
   public void cleanUp(){
@@ -93,7 +104,7 @@ class RendererStipple extends Renderer{
   }
  
   private int getAlpha(){
-    return (int) cp5.getController("drawLineAlpha").getValue();
+    return (int) cp5.getController("drawPointAlpha").getValue();
   }
   
   private float getHatchRadians(){
@@ -105,16 +116,15 @@ class RendererStipple extends Renderer{
   }
   
   public int[] processImage(PImage img){ 
-    lineToDraw=0;
+    println("processing image begun");
+    ellipses = new float[0][0];
     sampleIndex=0;
     numberLines = floor(img.height / getCellHeight());
     numberPoints = floor(img.width / getCellWidth());
     
     values = new int[0];
     // determine brightness values for the cells
-    
     for (int line=0; line<= numberLines; line++){
-      
       int yVal = (line * getCellHeight())+getCellHeight()/2;
       for (int i = 0; i<numberPoints; i++){
         int xVal = (i*getCellWidth())+(getCellWidth()/2);
@@ -135,7 +145,28 @@ class RendererStipple extends Renderer{
         int brightness = sampledValue/sampledNumber;
         values=append(values, brightness);
       } 
+      print("-");
     }
+    println();
+    // calculate circles to match cells
+    for (int line=0; line < numberLines; line++){
+      int yVal = getFactor()*(line * getCellHeight())+getCellHeight()/2;
+      for (int i = 0; i<numberPoints; i++){
+        int xVal = getFactor()*(i*getCellWidth())+(getCellWidth()/2);
+        int darkness = (255-values[sampleIndex])/2;
+        for (int point=0; point<darkness; point++){
+          float[] coords = {xVal+random(getFactor()*-getCellWidth()/2, getFactor()*getCellWidth()/2), yVal+random(getFactor()*-getCellHeight()/2, getFactor()*getCellHeight()/2), 1, 1};
+          ellipses = (float[][])append(ellipses, coords);
+        }
+        sampleIndex++;
+      } 
+      print(".");
+    }
+    println();
+    
+    println("processing image complete");
+    startIndex=0;
+    ellipsesPerDraw=ellipses.length/numberLines;
     
     int[] wh = new int[2];
     wh[0] = img.width*getFactor();
@@ -145,25 +176,19 @@ class RendererStipple extends Renderer{
   
     
   public int draw(PGraphics displayCanvas, PImage image){
-    
-    
-    // TODO: should move point setting to process image to save for SVG and to better set size of canvas.
-    // TODO: should add alpha back in
-   
     displayCanvas.beginDraw();
-    int yVal = getFactor()*(lineToDraw * getCellHeight())+getCellHeight()/2;
-    for (int i = 0; i<numberPoints; i++){
-      int xVal = getFactor()*(i*getCellWidth())+(getCellWidth()/2);
-      int darkness = (255-values[sampleIndex])/2;
-      println(values[sampleIndex]+"->"+darkness);
-      for (int hatch=0; hatch<darkness; hatch++){
-        displayCanvas.ellipse(xVal+random(getFactor()*-getCellWidth()/2,getFactor()*getCellWidth()/2), yVal+random(getFactor()*-getCellHeight()/2,getFactor()*getCellHeight()/2), 1, 1);
-      }
-      sampleIndex++;
-    } 
+    displayCanvas.stroke(0, getAlpha());
+    
+    int endIndex = startIndex+ellipsesPerDraw;
+    if (endIndex>ellipses.length) endIndex=ellipses.length; 
+    
+    for (int i = startIndex; i<endIndex; i++){
+      displayCanvas.ellipse(ellipses[i][0], ellipses[i][1], ellipses[i][2], ellipses[i][3]);
+    }
+    startIndex = endIndex;
     displayCanvas.endDraw();
-    lineToDraw++;
-    if (lineToDraw >= numberLines){
+    
+    if (startIndex >= ellipses.length){
       return DRAWING_DONE;
     } else {
       return DRAWING;
@@ -173,6 +198,15 @@ class RendererStipple extends Renderer{
   public String[] getSVGData(String[] FileOutput, PImage image){ 
     
     // TODO: finish this
+    
+    String rowTemp;
+    
+    for (int i = 0; i<ellipses.length; i++){
+      rowTemp = "<circle cx=\"" + ellipses[i][0] + "\" cy=\"" + ellipses[i][1] + "\" r=\"" + ellipses[i][2]/2.0 + "\" fill-opacity=\""+getAlpha()/100.0+"\"/>";
+      FileOutput = append(FileOutput, rowTemp);
+          
+    }
+   
     return FileOutput;
   }
 }

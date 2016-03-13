@@ -195,7 +195,7 @@ class RendererHalftone extends Renderer{
   }
   
   public String[] getSVGData(String[] FileOutput, PImage image){ 
-    // TODO: SVG needs to tak fill into account
+    // TODO: SVG needs to take fill into account
     
     
     String rowTemp;
