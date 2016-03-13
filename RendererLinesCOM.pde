@@ -5,7 +5,7 @@ class RendererLinesCOM extends Renderer{
   Group settingsGroup;
   int numberLines = 0;
   int numberSegments = 0;
-  int canvasVertOffset; 
+  //int canvasVertOffset; 
   
   int[][][] lines = {}; // a line consists of points which consist of coords
   
@@ -88,7 +88,7 @@ class RendererLinesCOM extends Renderer{
      .setPosition(cp5.get("curveTightness").getPosition()[0]+cp5.get("scaleFactor").getWidth()+100 , cp5.get("curveTightness").getPosition()[1])
      .setRange(0,15)
      .setGroup(settingsGroup)
-     .setValue(11)
+     .setValue(10)
      .setNumberOfTickMarks(16)
      .showTickMarks(false)
      .snapToTickMarks(true)
@@ -97,10 +97,10 @@ class RendererLinesCOM extends Renderer{
     cp5.addSlider("vertScale")
      .setLabel("vert scale")
      .setPosition(cp5.get("vertOffset").getPosition()[0], cp5.get("vertOffset").getHeight() + cp5.get("vertOffset").getPosition()[1]+ controlsVOffset)
-     .setRange(0,255)
+     .setRange(0,100)
      .setGroup(settingsGroup)
-     .setValue(20)
-     .setNumberOfTickMarks(256)
+     .setValue(1)
+     .setNumberOfTickMarks(101)
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
@@ -144,9 +144,7 @@ class RendererLinesCOM extends Renderer{
   private int getVertScale(){
     return (int) cp5.getController("vertScale").getValue();
   }
-  
-  // TODO: COM mode should take scale and offset into account
-  
+ 
   private int getVertOffset(){
     return (int) cp5.getController("vertOffset").getValue();
   }
@@ -213,7 +211,9 @@ class RendererLinesCOM extends Renderer{
             totalMass += thisMass;
             weightedMass += thisMass*(s-topOfSample);
           }
-          thisAdjY = round(weightedMass/totalMass)+topOfSample;
+          //thisAdjY = round(weightedMass/totalMass)+topOfSample;
+          thisAdjY = line*getVertOffset()-(int)(this.getVertScale()*round(weightedMass/totalMass));
+          
         } else {
           // calculate the average brightness
           for (int sX=leftOfSample; sX<=rightOfSample; sX++){
@@ -224,7 +224,7 @@ class RendererLinesCOM extends Renderer{
             }
           }
           float averageMass = totalMass/(getSampleHeight()*getSampleWidth());
-          thisAdjY = canvasVertOffset+(line*getVertOffset())-(int)(this.getVertScale()*averageMass/255);
+          thisAdjY = line*getVertOffset()-(int)(this.getVertScale()*averageMass/255);
         }
         
         // repeat the first and last points to add controls for them
@@ -235,13 +235,29 @@ class RendererLinesCOM extends Renderer{
       lines = (int[][][])append(lines, points);
     }
     
+    // adjust canvas size to fit all values
+    float minX = 0, minY = 0, maxX = 0, maxY = 0;
     
-    // TODO: return a more accurate canvas size (and add canvas offsets so that things fit). will probably need to give some buffy in the Y directions due to curves?
+    // find the minimum and maximum
+    for (int i = 0; i<lines.length; i++){
+      for (int point = 0; point<lines[i].length; point++){
+        if (lines[i][point][0] < minX) minX = lines[i][point][0];
+        if (lines[i][point][0] > maxX) maxX = lines[i][point][0];
+        
+        if (lines[i][point][1] < minY) minY = lines[i][point][1];
+        if (lines[i][point][1] > maxY) maxY = lines[i][point][1];
+      }
+    } 
+    for (int i = 0; i<lines.length; i++){
+      for (int point = 0; point<lines[i].length; point++){
+        lines[i][point][1] -= minY;
+      }
+    }
+    maxY -= minY;
     
     int[] wh = new int[2];
-    wh[0] = img.width*getScaleFactor();
-    wh[1] = (int)2.5*img.height*getScaleFactor();
-    canvasVertOffset = img.height*getScaleFactor();
+    wh[0] = ceil(maxX);
+    wh[1] = ceil(maxY)+10;
     return wh;
   }
       
@@ -256,8 +272,7 @@ class RendererLinesCOM extends Renderer{
       // lines contain points
       displayCanvas.beginShape();
       for (int point = 0; point<lines[line].length-1; point++){
-        // poits contain coordinates
-        println(lines[line][point][0]+" "+ lines[line][point][1]);
+        // points contain coordinates
         displayCanvas.curveVertex(lines[line][point][0], lines[line][point][1]);
       }
       displayCanvas.endShape();
@@ -274,7 +289,7 @@ class RendererLinesCOM extends Renderer{
       float[] xSegs={};
       float[] ySegs={};
   
-      for (int point = 0; point<lines[line].length-1; point++){
+      for (int point = 1; point<lines[line].length-3; point++){
         int x1, x2, x3, x4;
         int y1, y2, y3, y4;
         
@@ -296,9 +311,9 @@ class RendererLinesCOM extends Renderer{
           y4=lines[line][point+1][1]; 
         } else if (point==lines[line].length-1) {
           x3=lines[line][point][0]; 
-          x4=lines[line][point][0]; 
+          x4=lines[line][point+1][0]; 
           y3=lines[line][point][1]; 
-          y4=lines[line][point][1]; 
+          y4=lines[line][point+1][1]; 
         } else {
           x3=lines[line][point+1][0]; 
           x4=lines[line][point+2][0]; 
@@ -315,11 +330,6 @@ class RendererLinesCOM extends Renderer{
           ySegs = append(ySegs, yVal);
         }
        
-      }
-      
-      if (lines[line].length>1) {
-        xSegs = append(xSegs, lines[line][lines[line].length-1][0]);
-        ySegs = append(ySegs, lines[line][lines[line].length-1][1]);
       }
       
       // draw the lines
