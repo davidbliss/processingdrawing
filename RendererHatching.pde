@@ -217,7 +217,7 @@ class RendererHatching extends Renderer{
           float y2 = y1+sin(-getHatchRadians() + ranRadians) * (getHatchLength() - ranLength);
           
           float[] coords = {x1, y1, x2, y2};
-          lines = (float[][])append(lines, coords);
+       lines = (float[][])append(lines, coords);
           
         }
         sampleIndex++;
@@ -226,12 +226,43 @@ class RendererHatching extends Renderer{
     }
     println();
     
+    // adjust canvas size to fit all values
+    float minX = 0, minY = 0, maxX = 0, maxY = 0;
+    
+    // find the minimum and maximum
+    for (int i = 0; i<lines.length; i++){
+      if (lines[i][0] < minX) minX = lines[i][0];
+      if (lines[i][2] < minX) minX = lines[i][2];
+      if (lines[i][0] > maxX) maxX = lines[i][0];
+      if (lines[i][2] > maxX) maxX = lines[i][2];
+      
+      if (lines[i][1] < minY) minY = lines[i][1];
+      if (lines[i][3] < minY) minY = lines[i][3];
+      if (lines[i][1] > maxY) maxY = lines[i][1];
+      if (lines[i][3] > maxY) maxY = lines[i][3];
+    } 
+    // if mins are less than 0 offset all values
+    if (minX<0){
+      for (int i = 0; i<lines.length; i++){
+        lines[i][0] -= minX;
+        lines[i][2] -= minX;
+      }
+      maxX -= minX;
+    }
+    if (minY<0){
+      for (int i = 0; i<lines.length; i++){
+        lines[i][1] -= minY;
+        lines[i][3] -= minY;
+      }
+      maxY -= minY;
+    }
+    
     startIndex=0;
     linesPerDraw=lines.length/numberLines;
     
     int[] wh = new int[2];
-    wh[0] = img.width*getFactor();
-    wh[1] = img.height*getFactor();
+    wh[0] = ceil(maxX);
+    wh[1] = ceil(maxY);
     return wh;
   }
  
