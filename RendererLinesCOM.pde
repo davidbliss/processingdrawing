@@ -306,6 +306,8 @@ class RendererLinesCOM extends Renderer{
           y4=lines[line][point+2][1]; 
         }
         int segments = 13;
+        
+        curveTightness(getCurveTightness());
         for (int s=0; s<segments; s++){
           float xVal = curvePoint(x1, x2, x3, x4, s/(float) segments);
           float yVal = curvePoint(y1, y2, y3, y4, s/(float) segments);
