@@ -152,7 +152,6 @@ void setup(){
     .addItem("contours", 0)
     .addItem("contours, near points", 1)
     .addItem("hatching", 1)
-    .addItem("stipple", 1)
     .addItem("COM, lines", 1)
     .addItem("halftone", 1)
     .setGroup(drawingGroup)
@@ -300,9 +299,6 @@ void controlEvent(ControlEvent theEvent) {
       } else if (item.get("name")== "hatching"){
         if (renderer != null) renderer.cleanUp();
         renderer = new RendererHatching(cp5, settingsGroupX, settingsGroupY);
-      } else if (item.get("name")== "stipple"){
-        if (renderer != null) renderer.cleanUp();
-        renderer = new RendererStipple(cp5, settingsGroupX, settingsGroupY);
       } else if (item.get("name")== "COM, lines"){
         if (renderer != null) renderer.cleanUp();
         renderer = new RendererLinesCOM(cp5, settingsGroupX, settingsGroupY);

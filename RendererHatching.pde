@@ -217,7 +217,7 @@ class RendererHatching extends Renderer{
             sampledNumber++;
           }
         }
-        int brightness = 0;
+        int brightness = 255;
         if (sampledNumber!=0){
           brightness = sampledValue/sampledNumber;
         }
