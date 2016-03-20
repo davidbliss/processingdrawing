@@ -1,5 +1,7 @@
 import controlP5.*;
 
+// this is a version of hatching that does not pick up the pencil as often
+
 class RendererHatching extends Renderer{  
   Group settingsGroup;
   int startIndex;
@@ -8,7 +10,7 @@ class RendererHatching extends Renderer{
   int numberLines;
   int numberPoints;
   int[] values;
-  float[][] lines = {};
+  float[][][] lines = {};
   
   RendererHatching(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
     settingsGroup = cp5.addGroup("settingsGroup")
@@ -40,7 +42,8 @@ class RendererHatching extends Renderer{
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
-    
+   
+     
    cp5.addSlider("sampleSize")
      .setLabel("sample size")
      .setPosition(cp5.get("cellHeight").getWidth() + cp5.get("cellHeight").getPosition()[0] + 100, controlsVOffset)
@@ -50,6 +53,22 @@ class RendererHatching extends Renderer{
      .setNumberOfTickMarks(40)
      .showTickMarks(false)
      .snapToTickMarks(true)
+     ;
+     
+   cp5.addSlider("contrast")
+     .setLabel("contrast")
+     .setPosition(cp5.get("cellHeight").getWidth() + cp5.get("cellHeight").getPosition()[0] + 100, cp5.get("cellWidth").getHeight() + cp5.get("cellWidth").getPosition()[1] + controlsVOffset)
+     .setRange(1,5)
+     .setGroup(settingsGroup)
+     .setValue(3)
+     ;
+     
+   cp5.addSlider("density")
+     .setLabel("density")
+     .setPosition(cp5.get("cellHeight").getWidth() + cp5.get("cellHeight").getPosition()[0] + 100, cp5.get("cellHeight").getHeight() + cp5.get("cellHeight").getPosition()[1] + controlsVOffset)
+     .setRange(1,100)
+     .setGroup(settingsGroup)
+     .setValue(25)
      ;
      
    cp5.addSlider("factor")
@@ -68,12 +87,20 @@ class RendererHatching extends Renderer{
      .setPosition(5, cp5.get("factor").getHeight() + cp5.get("factor").getPosition()[1] + controlsVOffset)
      .setRange(0,100)
      .setGroup(settingsGroup)
-     .setValue(10)
+     .setValue(100)
      .setNumberOfTickMarks(101)
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
   
+  
+   cp5.addToggle("scribbles")
+     .setPosition(cp5.get("drawLineAlpha").getWidth() + cp5.get("drawLineAlpha").getPosition()[0] + 100, cp5.get("factor").getHeight() + cp5.get("factor").getPosition()[1] + controlsVOffset)
+     .setSize(50,10)
+     .setValue(true)
+     .setGroup(settingsGroup)
+     ;
+     
   cp5.addSlider("hatchRadians")
      .setLabel("Hatch Radian")
      .setPosition(5, cp5.get("drawLineAlpha").getHeight() + cp5.get("drawLineAlpha").getPosition()[1] + controlsVOffset)
@@ -126,6 +153,14 @@ class RendererHatching extends Renderer{
     return (int) cp5.getController("sampleSize").getValue();
   }
   
+  private int getContrast(){
+    return (int) cp5.getController("contrast").getValue();
+  }
+  
+  private int getDensity(){
+    return (int) cp5.getController("density").getValue();
+  }
+  
   private int getFactor(){
     return (int) cp5.getController("factor").getValue();
   }
@@ -150,8 +185,12 @@ class RendererHatching extends Renderer{
     return (float) cp5.getController("hatchLengthVariation").getValue();
   }
   
+  private int getScribbles(){
+    return (int) cp5.getController("scribbles").getValue();
+  }
+  
   public int[] processImage(PImage img){ 
-    lines = new float[0][0];
+    lines = new float[0][0][0];
     sampleIndex=0;
     numberLines = floor(img.height / getCellHeight());
     numberPoints = floor(img.width / getCellWidth());
@@ -178,7 +217,10 @@ class RendererHatching extends Renderer{
             sampledNumber++;
           }
         }
-        int brightness = sampledValue/sampledNumber;
+        int brightness = 0;
+        if (sampledNumber!=0){
+          brightness = sampledValue/sampledNumber;
+        }
         values=append(values, brightness);
       } 
       print("-");
@@ -190,35 +232,24 @@ class RendererHatching extends Renderer{
       int yVal = getFactor()*(line * getCellHeight())+getCellHeight()/2;
       for (int i = 0; i<numberPoints; i++){
         int xVal = getFactor()*(i*getCellWidth())+(getCellWidth()/2);
-        int darkness = (255-values[sampleIndex])/2;
-        for (int hatch=0; hatch<darkness; hatch++){
-          // completely random is interesting but is similar to pixelation (grid is apparent)
-          //displayCanvas.line( xVal+random(getFactor()*-getCellWidth(),getFactor()*getCellWidth()), 
-          //                    yVal+random(getFactor()*-getCellHeight(),getFactor()*getCellHeight()), 
-          //                    xVal+random(getFactor()*-getCellWidth(),getFactor()*getCellWidth()), 
-          //                    yVal+random(getFactor()*-getCellHeight(),getFactor()*getCellHeight()));
-          
-          // consistent hatches has a good feel to it
-          //float x1 = xVal+random(getFactor()*-getCellWidth()/2,getFactor()*getCellWidth()/2);
-          //float y1 = yVal+random(getFactor()*-getCellHeight()/2,getFactor()*getCellHeight()/2);
-          //float x2 = x1+cos(-getHatchRadians())*getHatchLength();
-          //float y2 = y1+sin(-getHatchRadians())*getHatchLength();
-          //displayCanvas.line( x1, 
-          //                    y1, 
-          //                    x2, 
-          //                    y2);
-          
-          // adding randomness is also nice 
-          float ranRadians = random(0,getHatchRadiansVariation());
-          float ranLength = random(0,getHatchLength()*getHatchLengthVariation());
-          float x1 = xVal+random(getFactor()*-getCellWidth()/2,getFactor()*getCellWidth()/2);
-          float y1 = yVal+random(getFactor()*-getCellHeight()/2,getFactor()*getCellHeight()/2);
-          float x2 = x1+cos(-getHatchRadians() + ranRadians) * (getHatchLength() - ranLength);
-          float y2 = y1+sin(-getHatchRadians() + ranRadians) * (getHatchLength() - ranLength);
-          
-          float[] coords = {x1, y1, x2, y2};
-       lines = (float[][])append(lines, coords);
-          
+        int darkness = (int)((pow(255-values[sampleIndex],getContrast())/pow(255,getContrast()-1))/(max((255-values[sampleIndex])/getDensity(),1)));
+        
+        float[][] coords = {};
+        if(darkness>0){
+          for (int hatch=0; hatch<darkness; hatch++){
+            
+            // adding randomness is also nice 
+            float ranRadians = random(0,getHatchRadiansVariation());
+            float ranLength = random(0,getHatchLength()*getHatchLengthVariation());
+            float x1 = xVal+random(getFactor()*-getCellWidth()/2,getFactor()*getCellWidth()/2);
+            float y1 = yVal+random(getFactor()*-getCellHeight()/2,getFactor()*getCellHeight()/2);
+            float x2 = x1+cos(-getHatchRadians() + ranRadians) * (getHatchLength() - ranLength);
+            float y2 = y1+sin(-getHatchRadians() + ranRadians) * (getHatchLength() - ranLength);
+            
+            coords = (float[][])append(coords, new float[] {x1, y1});
+            coords = (float[][])append(coords, new float[] {x2, y2});
+          }
+          lines = (float[][][])append(lines, coords);
         }
         sampleIndex++;
       } 
@@ -231,28 +262,28 @@ class RendererHatching extends Renderer{
     
     // find the minimum and maximum
     for (int i = 0; i<lines.length; i++){
-      if (lines[i][0] < minX) minX = lines[i][0];
-      if (lines[i][2] < minX) minX = lines[i][2];
-      if (lines[i][0] > maxX) maxX = lines[i][0];
-      if (lines[i][2] > maxX) maxX = lines[i][2];
-      
-      if (lines[i][1] < minY) minY = lines[i][1];
-      if (lines[i][3] < minY) minY = lines[i][3];
-      if (lines[i][1] > maxY) maxY = lines[i][1];
-      if (lines[i][3] > maxY) maxY = lines[i][3];
+      for (int s = 0; s<lines[i].length; s++){
+        if (lines[i][s][0] < minX) minX = lines[i][s][0];
+        if (lines[i][s][0] > maxX) maxX = lines[i][s][0];
+        
+        if (lines[i][s][1] < minY) minY = lines[i][s][1];
+        if (lines[i][s][1] > maxY) maxY = lines[i][s][1];
+      }
     } 
     // if mins are less than 0 offset all values
     if (minX<0){
       for (int i = 0; i<lines.length; i++){
-        lines[i][0] -= minX;
-        lines[i][2] -= minX;
+        for (int s = 0; s<lines[i].length; s++){
+          lines[i][s][0] -= minX;
+        }
       }
       maxX -= minX;
     }
     if (minY<0){
       for (int i = 0; i<lines.length; i++){
-        lines[i][1] -= minY;
-        lines[i][3] -= minY;
+        for (int s = 0; s<lines[i].length; s++){
+          lines[i][s][1] -= minY;
+        }
       }
       maxY -= minY;
     }
@@ -269,16 +300,29 @@ class RendererHatching extends Renderer{
   public int draw(PGraphics displayCanvas, PImage image){
     displayCanvas.beginDraw();
     displayCanvas.stroke(0, getAlpha());
+    displayCanvas.noFill();
     
     int endIndex = startIndex+linesPerDraw;
     if (endIndex>lines.length) endIndex=lines.length; 
     
-    for (int i = startIndex; i<endIndex; i++){
-      displayCanvas.line(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
+    if (getScribbles()==1){
+      for (int i = startIndex; i<endIndex; i++){
+        displayCanvas.beginShape();
+        for (int s = 0; s<lines[i].length; s++){
+          displayCanvas.vertex(lines[i][s][0], lines[i][s][1]);
+        }
+        displayCanvas.endShape();
+      }
+    } else {
+      for (int i = startIndex; i<endIndex; i++){
+        for (int s = 0; s<lines[i].length-1; s+=2){
+          displayCanvas.line(lines[i][s][0], lines[i][s][1], lines[i][s+1][0], lines[i][s+1][1]);
+        }
+      }
     }
+    
     startIndex = endIndex;
     displayCanvas.endDraw();
-    
     if (startIndex >= lines.length){
       return DRAWING_DONE;
     } else {
@@ -288,11 +332,24 @@ class RendererHatching extends Renderer{
 
   public String[] getSVGData(String[] FileOutput, PImage image){ 
     String rowTemp;
-    for (int i = 0; i<lines.length; i++){
-      rowTemp = "<line stroke=\"black\" stroke-width=\"1\" x1=\"" + lines[i][0] + "\" y1=\"" + lines[i][1] + "\" x2=\"" + lines[i][2] + "\" y2=\"" + lines[i][3] + "\" stroke-opacity=\""+getAlpha()/100.0+"\"/>";
-      FileOutput = append(FileOutput, rowTemp);
-          
-    }
+    if (getScribbles()==1){
+      for (int i = 0; i<lines.length; i++){
+        rowTemp = "<path style=\"fill:none;stroke:black;stroke-opacity:"+getAlpha()/100.0+";stroke-width:1px;stroke-linejoin:round;stroke-linecap:round;\" d=\"M ";
+        FileOutput = append(FileOutput, rowTemp);
+        for (int s = 0; s<lines[i].length; s++){
+          rowTemp = lines[i][s][0] + " " + lines[i][s][1] + "\r";
+          FileOutput = append(FileOutput, rowTemp);
+        }  
+        FileOutput = append(FileOutput, "\" />"); // End path description
+      }
+    } else {
+      for (int i = 0; i<lines.length; i++){
+        for (int s = 0; s<lines[i].length-1; s+=2){
+          rowTemp = "<line stroke=\"black\" stroke-width=\"1\" x1=\"" + lines[i][s][0] + "\" y1=\"" + lines[i][s][1] + "\" x2=\"" + lines[i][s+1][0] + "\" y2=\"" + lines[i][s+1][1] + "\" stroke-opacity=\""+getAlpha()/100.0+"\"/>";
+          FileOutput = append(FileOutput, rowTemp);
+        }
+      }
+       }
     return FileOutput;
   }
 }
