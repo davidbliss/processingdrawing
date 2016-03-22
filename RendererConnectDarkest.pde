@@ -5,12 +5,10 @@ import controlP5.*;
 
 class RendererConnectDarkest extends Renderer{
   Group settingsGroup;
+  int numberRows;
+  int numberCells;
   
-  int lineToDraw;
-  int numberLines;
-  int numberPoints;
-  
-  int[] values;
+  int[][][] values = new int[256][0][2];
   
   RendererConnectDarkest(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
     println("creating RendererHalftone");
@@ -34,31 +32,9 @@ class RendererConnectDarkest extends Renderer{
      .snapToTickMarks(true)
      ;
      
-   cp5.addSlider("cellHeight")
+    cp5.addSlider("cellHeight")
      .setLabel("cell height")
      .setPosition(5, cp5.get("cellWidth").getHeight() + cp5.get("cellWidth").getPosition()[1] + controlsVOffset)
-     .setRange(1,40)
-     .setGroup(settingsGroup)
-     .setValue(15)
-     .setNumberOfTickMarks(40)
-     .showTickMarks(false)
-     .snapToTickMarks(true)
-     ;
-   
-   cp5.addSlider("rowOffset")
-     .setLabel("row offset")
-     .setPosition(cp5.get("cellHeight").getWidth() + cp5.get("cellHeight").getPosition()[0] + 100, controlsVOffset)
-     .setRange(0,20)
-     .setGroup(settingsGroup)
-     .setValue(10)
-     .setNumberOfTickMarks(21)
-     .showTickMarks(false)
-     .snapToTickMarks(true)
-     ;
-    
-   cp5.addSlider("sampleSize")
-     .setLabel("sample size")
-     .setPosition(cp5.get("rowOffset").getPosition()[0], cp5.get("rowOffset").getHeight() + cp5.get("rowOffset").getPosition()[1] + controlsVOffset)
      .setRange(1,40)
      .setGroup(settingsGroup)
      .setValue(20)
@@ -66,32 +42,10 @@ class RendererConnectDarkest extends Renderer{
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
-    
-   cp5.addSlider("minRadius")
-     .setLabel("min radius")
-     .setPosition(cp5.get("cellHeight").getPosition()[0], cp5.get("cellHeight").getHeight() + cp5.get("cellHeight").getPosition()[1] + controlsVOffset)
-     .setRange(1,40)
-     .setGroup(settingsGroup)
-     .setValue(2)
-     .setNumberOfTickMarks(40)
-     .showTickMarks(false)
-     .snapToTickMarks(true)
-     ;
   
-  cp5.addSlider("maxRadius")
-     .setLabel("max radius")
-     .setPosition(cp5.get("minRadius").getPosition()[0], cp5.get("minRadius").getHeight() + cp5.get("minRadius").getPosition()[1] + controlsVOffset)
-     .setRange(1,40)
-     .setGroup(settingsGroup)
-     .setValue(10)
-     .setNumberOfTickMarks(40)
-     .showTickMarks(false)
-     .snapToTickMarks(true)
-     ;
-  
-  cp5.addSlider("scaleFactor")
+    cp5.addSlider("scaleFactor")
      .setLabel("scaleFactor")
-     .setPosition(cp5.get("maxRadius").getPosition()[0], cp5.get("maxRadius").getHeight() + cp5.get("maxRadius").getPosition()[1] + controlsVOffset)
+     .setPosition(5, cp5.get("cellHeight").getHeight() + cp5.get("cellHeight").getPosition()[1] + controlsVOffset)
      .setRange(1,20)
      .setGroup(settingsGroup)
      .setValue(1)
@@ -112,33 +66,30 @@ class RendererConnectDarkest extends Renderer{
   private int getCellHeight(){
     return (int) cp5.getController("cellHeight").getValue();
   }
- 
-  private int getRowOffset(){
-    return (int) cp5.getController("rowOffset").getValue();
-  }
-  
-  private int getSampleSize(){
-    return (int) cp5.getController("sampleSize").getValue();
-  }
-  
-  private int getMinRadius(){
-    return (int) cp5.getController("minRadius").getValue();
-  }
-  
-  private int getMaxRadius(){
-    return (int) cp5.getController("maxRadius").getValue();
-  }
   
   private int getScaleFactor(){
     return (int) cp5.getController("scaleFactor").getValue();
   }
   
   public int[] processImage(PImage img){ 
-    lineToDraw=0;
-    numberLines = floor(img.height / getCellHeight());
-    numberPoints = floor(img.width / getCellWidth());
+    values = new int[256][0][2];
+    numberRows = floor(img.height / getCellHeight());
+    numberCells = floor(img.width / getCellWidth());
     
-    values = new int[0];
+    for (int x=getCellWidth()/2; x<numberCells*getCellWidth(); x+=getCellWidth()){
+      for (int y=getCellHeight()/2; y<numberRows*getCellHeight(); y+=getCellHeight()){
+        int brightness=0;
+        int sampleSize=0;
+        for (int samplex = x - getCellWidth()/2; samplex < x + getCellWidth()/2; samplex++){
+          for (int sampley = y - getCellHeight()/2; sampley < y + getCellHeight()/2; sampley++){
+            brightness+=brightness(img.pixels[sampley*img.width+samplex]);
+            sampleSize++;
+          }
+        }
+        brightness = brightness/sampleSize;
+        values[brightness]=(int[][])append(values[brightness], new int[] {x,y});
+      }
+    }
     
     int[] wh = new int[2];
     wh[0] = img.width*getScaleFactor();
@@ -147,82 +98,67 @@ class RendererConnectDarkest extends Renderer{
   }
       
   public int draw(PGraphics displayCanvas, PImage image){
-    int offset=0;
-    if(lineToDraw % 2==1){
-      offset=getRowOffset();
-    } 
     
-    int yVal = (lineToDraw * getCellHeight())+getCellHeight()/2;
     displayCanvas.beginDraw();
-    displayCanvas.fill(0,0,0);
-    displayCanvas.noStroke();
-    for (int i = 0; i<numberPoints; i++){
-      if (offset>0 && i==numberPoints-1){
-        // don't do anything
-      } else {
-        int xVal = (i*getCellWidth())+(getCellWidth()/2)+offset;
-        
-        int sampleMinX = max(0, xVal-(getSampleSize()/2));
-        int sampleMaxX = min(image.width, xVal+(getSampleSize()/2));
-        int sampleMinY = max(0, yVal-(getSampleSize()/2));
-        int sampleMaxY = min(image.height, yVal+(getSampleSize()/2));
-        
-        int sampledValue=0;
-        int sampledNumber=0;
-        for (int y = sampleMinY; y < sampleMaxY; y++){
-          for (int x = sampleMinX; x < sampleMaxX; x++){
-            sampledValue+=(255 - brightness(image.pixels[y*image.width+x]));
-            sampledNumber++;
-          }
+    displayCanvas.stroke(100, 255); 
+    displayCanvas.curveTightness(0);
+    displayCanvas.noFill();
+    
+    
+    displayCanvas.beginShape();
+    // TODO: parameterize the min and max brightness values 
+    for (int b = 0; b<255; b++){
+      // TODO: parameterixe if stroke alpha should be based on the brightness of the pixels
+      displayCanvas.stroke(100, 255); 
+      // just connect them in the order they appear
+      //for (int point = 0; point<values[b].length; point++){
+      //  displayCanvas.curveVertex(values[b][point][0], values[b][point][1]);
+      //}
+      
+      if (values[b].length>0){
+        // first pick a random 1
+        int first = int(random(values[b].length));
+        int[] latest = values[b][first];
+        println(values[b][first][0]+","+values[b][first][1]);
+        displayCanvas.curveVertex(values[b][first][0], values[b][first][1]);
+        // remove it
+        for(int i=first ; i<values[b].length-1 ; i++){
+         values[b][i] = values[b][i+1];
         }
-        float size = (sampledValue/sampledNumber)/255.0;
-        // scale based on desired radius range
-        int radius = getMinRadius() + (int)(size*(getMaxRadius()-getMinRadius())); 
-
-        //save for SVG
-        values=append(values, radius);
+        values[b] = (int[][])shorten(values[b]);
         
-        displayCanvas.ellipse(xVal, yVal, radius*2, radius*2);
+        while (values[b].length>0){
+          int closestindex=0;
+          float closestdistance=10000;
+          for(int v=0;v<values[b].length;v++){
+            float distance = sqrt(pow(latest[0]-values[b][v][0], 2)+pow(latest[1]-values[b][v][1], 2));
+            if (distance<closestdistance){
+              closestdistance = distance;
+              closestindex = v;
+            }
+          }
+          
+          latest = values[b][closestindex];
+          println(values[b][closestindex][0]+","+values[b][closestindex][1]);
+          // TODO: do this work in process image and build a list of vectors.
+          // TODO: try using bezier instead of simple curve
+          displayCanvas.curveVertex(values[b][closestindex][0], values[b][closestindex][1]);
+          // remove it
+          for(int i=closestindex ; i<values[b].length-1 ; i++){
+           values[b][i] = values[b][i+1];
+          }
+          values[b] = (int[][])shorten(values[b]);
+          
+        }
       }
-    }    
-    displayCanvas.endDraw();
-    
-    
-    lineToDraw++;
-    cp5.get("progress").setValue((int)((float)lineToDraw/numberLines*100));
-    if (lineToDraw > numberLines){
-      return DRAWING_DONE;
-    } else {
-      return DRAWING;
     }
+    displayCanvas.endShape();
+    displayCanvas.endDraw();
+    return DRAWING_DONE;
   }
   
   public String[] getSVGData(String[] FileOutput, PImage image){ 
-    // TODO: for SVG draw concentric circles?? Or do that in inkscape
-    
-    
-    String rowTemp;
-    int sampleIndex=0;
-    for (int line=0; line<= numberLines; line++){
-      int offset=0;
-      if(line % 2==1){
-        offset=getRowOffset();
-      } 
-      
-      int yVal = (line * getCellHeight())+getCellHeight()/2;
-      for (int i = 0; i<numberPoints; i++){
-        if (offset>0 && i==numberPoints-1){
-          // don't do anything
-        } else {
-          int xVal = (i*getCellWidth())+(getCellWidth()/2)+offset;
-          int radius = values[sampleIndex];
-          
-          rowTemp = "<circle cx=\"" + xVal + "\" cy=\"" + yVal + "\" r=\"" + radius + "\"/>";
-          FileOutput = append(FileOutput, rowTemp);
-          sampleIndex++;
-        }
-      }    
-    }
+   
     return FileOutput;
   }
 }

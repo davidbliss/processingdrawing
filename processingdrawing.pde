@@ -149,6 +149,7 @@ void setup(){
     .setOpen(false)
     .setHeight(80)
     .setCaptionLabel("Choose Renderer")
+    .addItem("connect darkest cells", 1)
     .addItem("contours", 0)
     .addItem("contours, near points", 1)
     .addItem("hatching", 1)
@@ -290,7 +291,10 @@ void controlEvent(ControlEvent theEvent) {
       DropdownList ddl = (DropdownList)theEvent.getController();
       Map item = (Map) ddl.getItem( (int) theEvent.getValue() );
       println(item.get("name"));
-      if (item.get("name")== "contours, near points"){
+      if (item.get("name")== "connect darkest cells"){
+        if (renderer != null) renderer.cleanUp();
+        renderer = new RendererConnectDarkest(cp5, settingsGroupX, settingsGroupY);
+      } else if (item.get("name")== "contours, near points"){
         if (renderer != null) renderer.cleanUp();
         renderer = new RendererNearPoints(cp5, settingsGroupX, settingsGroupY);
       } else if (item.get("name")== "contours"){
