@@ -1,7 +1,5 @@
 import controlP5.*;
 
-// this is a version of hatching that does not pick up the pencil as often
-
 class RendererHatching extends Renderer{  
   Group settingsGroup;
   int startIndex;

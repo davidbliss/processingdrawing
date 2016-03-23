@@ -1,4 +1,3 @@
-// draws horizontal line, offsetting y bassed on the center of mass for a vertical sample of pixels at a given x (darker pixel value = greater massmass) 
 import controlP5.*;
 
 class RendererHalftone extends Renderer{
@@ -10,8 +9,7 @@ class RendererHalftone extends Renderer{
   int[][] values;
   
   RendererHalftone(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
-    println("creating RendererHalftone");
-   
+
     settingsGroup = cp5.addGroup("settingsGroup")
     .setLabel("render settings")
     .setPosition(settingsGroupX, settingsGroupY)

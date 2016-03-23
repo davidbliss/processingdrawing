@@ -1,7 +1,4 @@
-// draws horizontal line, offsetting y bassed on the center of mass for a vertical sample of pixels at a given x (darker pixel value = greater massmass) 
 import controlP5.*;
-
-// TODO: NEED TO THINK THROUGH HOW THIS ONE WILL WORK
 
 class RendererConnectDarkest extends Renderer{
   Group settingsGroup;
@@ -11,8 +8,6 @@ class RendererConnectDarkest extends Renderer{
   int[][][] values = new int[256][0][2];
   
   RendererConnectDarkest(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
-    println("creating RendererHalftone");
-   
     settingsGroup = cp5.addGroup("settingsGroup")
     .setLabel("render settings")
     .setPosition(settingsGroupX, settingsGroupY)
@@ -139,7 +134,6 @@ class RendererConnectDarkest extends Renderer{
           latest = values[b][closestindex];
           println(values[b][closestindex][0]+","+values[b][closestindex][1]);
           // TODO: do this work in process image and build a list of vectors.
-          // TODO: try using bezier instead of simple curve
           displayCanvas.curveVertex(values[b][closestindex][0], values[b][closestindex][1]);
           // remove it
           values[b] = slice(values[b], closestindex);

@@ -9,7 +9,6 @@ class RendererContours extends Renderer{
   Group settingsGroup;
   
   RendererContours(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
-    println("creating contours");
     
     settingsGroup = cp5.addGroup("settingsGroup")
     .setLabel("render settings")

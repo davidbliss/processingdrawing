@@ -5,7 +5,6 @@ class RendererLinesCOM extends Renderer{
   Group settingsGroup;
   int numberLines = 0;
   int numberSegments = 0;
-  //int canvasVertOffset; 
   
   int[][][] lines = {}; // a line consists of points which consist of coords
   

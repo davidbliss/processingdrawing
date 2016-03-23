@@ -2,8 +2,6 @@ import controlP5.*;
 import blobDetection.*;
 
 class RendererNearPoints extends Renderer{
-  // This rendered will find edges in the image in the form of contours, record all the points from contoulrs in one list and draw lines between points that are close to each other (where close is defined by less than the threshold). 
-  
   Point2d[] points;
   BlobDetection[] theBlobDetection;
   int p1=0;
