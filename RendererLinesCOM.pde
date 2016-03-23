@@ -137,8 +137,8 @@ class RendererLinesCOM extends Renderer{
     return (int) cp5.getController("scaleFactor").getValue();
   }
   
-  private int getCurveTightness(){
-    return (int) cp5.getController("curveTightness").getValue();
+  private float getCurveTightness(){
+    return (float) cp5.getController("curveTightness").getValue();
   }
   
   private int getVertScale(){
@@ -267,7 +267,6 @@ class RendererLinesCOM extends Renderer{
     displayCanvas.curveTightness(getCurveTightness());
     displayCanvas.noFill();
     
-    
     for (int line = 0; line<lines.length; line++){
       // lines contain points
       displayCanvas.beginShape();
@@ -285,63 +284,18 @@ class RendererLinesCOM extends Renderer{
     String rowTemp;
     
     for (int line = 0; line<lines.length; line++){
-      //build segments using curvePoint
-      float[] xSegs={};
-      float[] ySegs={};
-  
-      for (int point = 1; point<lines[line].length-3; point++){
-        int x1, x2, x3, x4;
-        int y1, y2, y3, y4;
-        
-        if (point==0) {
-          x1 = lines[line][point][0];
-          y1 = lines[line][point][1];
-        } else {
-          x1 = lines[line][point-1][0];
-          y1 = lines[line][point-1][1];
-        }
-        
-        x2 = lines[line][point][0];
-        y2 = lines[line][point][1];
-        
-        if (point==lines[line].length-2){
-          x3=lines[line][point+1][0]; 
-          x4=lines[line][point+1][0]; 
-          y3=lines[line][point+1][1]; 
-          y4=lines[line][point+1][1]; 
-        } else if (point==lines[line].length-1) {
-          x3=lines[line][point][0]; 
-          x4=lines[line][point+1][0]; 
-          y3=lines[line][point][1]; 
-          y4=lines[line][point+1][1]; 
-        } else {
-          x3=lines[line][point+1][0]; 
-          x4=lines[line][point+2][0]; 
-          y3=lines[line][point+1][1]; 
-          y4=lines[line][point+2][1]; 
-        }
-        int segments = 13;
-        
-        curveTightness(getCurveTightness());
-        for (int s=0; s<segments; s++){
-          float xVal = curvePoint(x1, x2, x3, x4, s/(float) segments);
-          float yVal = curvePoint(y1, y2, y3, y4, s/(float) segments);
-          xSegs = append(xSegs, xVal);
-          ySegs = append(ySegs, yVal);
-        }
-       
-      }
+      float[][] segmentedPoints;
+      segmentedPoints = curvesToPoints(lines[line], getCurveTightness());
       
       // draw the lines
       rowTemp = "<path style=\"fill:none;stroke:black;stroke-width:1px;stroke-linejoin:round;stroke-linecap:round;\" d=\"M ";
       FileOutput = append(FileOutput, rowTemp);
-      for (int i=0; i<xSegs.length; i++){
-        rowTemp = xSegs[i] + " " + ySegs[i] + "\r";
+      for (int i=0; i<segmentedPoints.length; i++){
+        rowTemp = segmentedPoints[i][0] + " " + segmentedPoints[i][1] + "\r";
         FileOutput = append(FileOutput, rowTemp);
       }
       FileOutput = append(FileOutput, "\" />"); // End path description
     }
-    
     return FileOutput;
   }
 }

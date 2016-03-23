@@ -103,13 +103,13 @@ class RendererConnectDarkest extends Renderer{
     displayCanvas.stroke(100, 255); 
     displayCanvas.curveTightness(0);
     displayCanvas.noFill();
-    
-    
+    // TODO: make the distance traveled affect the line thickness or alpha. Further = faster = lighter.
+    // TODO: try to draw one curve for each level, rather than one constant curve
     displayCanvas.beginShape();
     // TODO: parameterize the min and max brightness values 
     for (int b = 0; b<255; b++){
       // TODO: parameterixe if stroke alpha should be based on the brightness of the pixels
-      displayCanvas.stroke(100, 255); 
+      displayCanvas.stroke(100, 255-b); 
       // just connect them in the order they appear
       //for (int point = 0; point<values[b].length; point++){
       //  displayCanvas.curveVertex(values[b][point][0], values[b][point][1]);
@@ -122,16 +122,14 @@ class RendererConnectDarkest extends Renderer{
         println(values[b][first][0]+","+values[b][first][1]);
         displayCanvas.curveVertex(values[b][first][0], values[b][first][1]);
         // remove it
-        for(int i=first ; i<values[b].length-1 ; i++){
-         values[b][i] = values[b][i+1];
-        }
-        values[b] = (int[][])shorten(values[b]);
+        values[b] = slice(values[b], first);
         
         while (values[b].length>0){
           int closestindex=0;
           float closestdistance=10000;
           for(int v=0;v<values[b].length;v++){
-            float distance = sqrt(pow(latest[0]-values[b][v][0], 2)+pow(latest[1]-values[b][v][1], 2));
+            //float distance = sqrt(pow(latest[0]-values[b][v][0], 2)+pow(latest[1]-values[b][v][1], 2));
+            float distance = distanceBetween2Points(latest, values[b][v]);
             if (distance<closestdistance){
               closestdistance = distance;
               closestindex = v;
@@ -144,10 +142,7 @@ class RendererConnectDarkest extends Renderer{
           // TODO: try using bezier instead of simple curve
           displayCanvas.curveVertex(values[b][closestindex][0], values[b][closestindex][1]);
           // remove it
-          for(int i=closestindex ; i<values[b].length-1 ; i++){
-           values[b][i] = values[b][i+1];
-          }
-          values[b] = (int[][])shorten(values[b]);
+          values[b] = slice(values[b], closestindex);
           
         }
       }
