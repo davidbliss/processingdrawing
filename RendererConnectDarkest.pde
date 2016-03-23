@@ -6,7 +6,8 @@ class RendererConnectDarkest extends Renderer{
   int numberCells;
   
   int[][][] values = new int[256][0][2];
-  int[][][] lines = new int[256][0][2];
+  int[][][] vertexes = new int[256][0][2];
+  float[][][] lineCoords = new float[256][0][2];
   
   RendererConnectDarkest(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
     settingsGroup = cp5.addGroup("settingsGroup")
@@ -71,6 +72,14 @@ class RendererConnectDarkest extends Renderer{
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
+    
+    cp5.addSlider("curveTightness")
+     .setLabel("curve tightness")
+     .setPosition(5, cp5.get("scaleFactor").getHeight() + cp5.get("scaleFactor").getPosition()[1]+ controlsVOffset)
+     .setRange(-5,5)
+     .setGroup(settingsGroup)
+     .setValue(0.0)
+     ;
   }
   
   public void cleanUp(){
@@ -97,9 +106,14 @@ class RendererConnectDarkest extends Renderer{
     return (int) cp5.getController("scaleFactor").getValue();
   }
   
+  private float getCurveTightness(){
+    return (float) cp5.getController("curveTightness").getValue();
+  }
+  
   public int[] processImage(PImage img){ 
     values = new int[256][0][2];
-    lines = new int[256][0][2];
+    vertexes = new int[256][0][2];
+    lineCoords = new float[256][0][2];
     numberRows = floor(img.height / getCellHeight());
     numberCells = floor(img.width / getCellWidth());
     
@@ -120,14 +134,14 @@ class RendererConnectDarkest extends Renderer{
     }
     int first = -1;
     int[] latest = {};
-    // create lines based on each brightness level
+    // create vertexes based on each brightness level
     for (int b = getMinBrightness(); b<getMaxBrightness(); b++){
       if (values[b].length>0){
         // first pick a random cell
         if (first<0){
           first = int(random(values[b].length));
           latest = values[b][first];
-          lines[b] = (int[][])append(lines[b], new int[] {values[b][first][0], values[b][first][1]});
+          vertexes[b] = (int[][])append(vertexes[b], new int[] {values[b][first][0], values[b][first][1]});
         }
         
         // remove it
@@ -146,7 +160,7 @@ class RendererConnectDarkest extends Renderer{
           }
           
           latest = values[b][closestindex]; 
-          lines[b] = (int[][])append(lines[b], new int[] {values[b][closestindex][0], values[b][closestindex][1]});
+          vertexes[b] = (int[][])append(vertexes[b], new int[] {values[b][closestindex][0], values[b][closestindex][1]});
        
           // remove it
           values[b] = slice(values[b], closestindex);
@@ -154,7 +168,10 @@ class RendererConnectDarkest extends Renderer{
         }
       }
     }
-    // TODO: create line segments based on curves, then use those to draw so you can make thicknesses etc dynamic based on distance.
+    
+    for (int l=0; l<vertexes.length; l++){
+      lineCoords[l] = curvesToPoints(vertexes[l], getCurveTightness());
+    }
     
     int[] wh = new int[2];
     wh[0] = img.width*getScaleFactor();
@@ -167,37 +184,30 @@ class RendererConnectDarkest extends Renderer{
     // after experimenting, I think the output is nicer when drawn as one long line
 
     displayCanvas.beginDraw();
-    displayCanvas.curveTightness(0);
     displayCanvas.noFill();
-    // TODO: make the distance traveled affect the line thickness or alpha. Further = faster = lighter
-    // TODO: if you break curve into segments for the bitmap drawing as well as the SVG, you can vary line thickness rather than the curve
     displayCanvas.beginShape();     
     for (int b=getMinBrightness(); b<getMaxBrightness(); b++){
-      if (lines[b].length>0){
-       
-        // TODO: parameterize if stroke alpha should be based on the brightness of the pixels
-        displayCanvas.stroke(100, 255-b); 
+      if (lineCoords[b].length>1){
+        for (int l=0; l<lineCoords[b].length-1; l++){
+          // TODO: Tune this use of distance to adjust these parameters
+          // TODO: consider just ignoring points of a certain distance
+          float distance = distanceBetween2Points(lineCoords[b][l], lineCoords[b][l+1]);
+          displayCanvas.stroke(100, 255-(150*(1-distance/100)));
+          displayCanvas.strokeWeight( 3*(1-distance/100) );
+          displayCanvas.strokeCap(SQUARE);
+          displayCanvas.line(lineCoords[b][l][0], lineCoords[b][l][1], lineCoords[b][l+1][0], lineCoords[b][l+1][1]);
+        }
         
-        for (int p=0; p<lines[b].length;p++){
-          displayCanvas.curveVertex(lines[b][p][0], lines[b][p][1]);
+        // TODO: make drawing the points optional
+        displayCanvas.fill(100, 255-b); 
+        displayCanvas.noStroke();
+        for (int p=1; p<vertexes[b].length-1;p++){
+          // TODO: parameterize the size of the points
+          //displayCanvas.ellipse(vertexes[b][p][0], vertexes[b][p][1], 2*getScaleFactor(), 2*getScaleFactor());
         }
       }
     }
     displayCanvas.endShape();
-    
-    // TODO: make drawing the points optional
-    for (int b=getMinBrightness(); b<getMaxBrightness(); b++){
-      if (lines[b].length>0){
-         // TODO: parameterize if stroke alpha should be based on the brightness of the pixels
-         displayCanvas.fill(100, 255-b); 
-         displayCanvas.noStroke();
-         for (int p=1; p<lines[b].length-1;p++){
-           // TODO: parameterize the size of the points
-           displayCanvas.ellipse(lines[b][p][0], lines[b][p][1], 2*getScaleFactor(), 2*getScaleFactor());
-         }
-      } 
-    }
-    
     displayCanvas.endDraw();
     return DRAWING_DONE;
   }

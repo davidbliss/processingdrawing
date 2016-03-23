@@ -2,6 +2,10 @@ float distanceBetween2Points(int[] p1, int[] p2){
   return sqrt(pow(p1[0]-p2[0], 2)+pow(p1[1]-p2[1], 2));
 }
 
+float distanceBetween2Points(float[] p1, float[] p2){
+  return sqrt(pow(p1[0]-p2[0], 2)+pow(p1[1]-p2[1], 2));
+}
+
 int[][] slice (int[][] array, int drop){
   for(int i=drop ; i<array.length-1 ; i++){
     array[i] = array[i+1];
