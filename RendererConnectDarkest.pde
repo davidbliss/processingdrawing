@@ -6,6 +6,7 @@ class RendererConnectDarkest extends Renderer{
   int numberCells;
   
   int[][][] values = new int[256][0][2];
+  int[][][] lines = new int[256][0][2];
   
   RendererConnectDarkest(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
     settingsGroup = cp5.addGroup("settingsGroup")
@@ -37,6 +38,28 @@ class RendererConnectDarkest extends Renderer{
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
+     
+    cp5.addSlider("minBrightness")
+     .setLabel("minimum brightness drawn")
+     .setPosition(cp5.get("cellWidth").getWidth() + cp5.get("cellWidth").getPosition()[0] +100, controlsVOffset)
+     .setRange(0,255)
+     .setGroup(settingsGroup)
+     .setValue(0)
+     .setNumberOfTickMarks(256)
+     .showTickMarks(false)
+     .snapToTickMarks(true)
+     ;
+     
+    cp5.addSlider("maxBrightness")
+     .setLabel("maximum brightness drawn")
+     .setPosition(cp5.get("minBrightness").getPosition()[0],  cp5.get("cellWidth").getHeight() + cp5.get("cellWidth").getPosition()[1] + controlsVOffset)
+     .setRange(0,255)
+     .setGroup(settingsGroup)
+     .setValue(255)
+     .setNumberOfTickMarks(256)
+     .showTickMarks(false)
+     .snapToTickMarks(true)
+     ;
   
     cp5.addSlider("scaleFactor")
      .setLabel("scaleFactor")
@@ -44,7 +67,7 @@ class RendererConnectDarkest extends Renderer{
      .setRange(1,20)
      .setGroup(settingsGroup)
      .setValue(1)
-     .setNumberOfTickMarks(21)
+     .setNumberOfTickMarks(20)
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
@@ -62,15 +85,25 @@ class RendererConnectDarkest extends Renderer{
     return (int) cp5.getController("cellHeight").getValue();
   }
   
+  private int getMaxBrightness(){
+    return (int) cp5.getController("maxBrightness").getValue();
+  }
+  
+  private int getMinBrightness(){
+    return (int) cp5.getController("minBrightness").getValue();
+  }
+  
   private int getScaleFactor(){
     return (int) cp5.getController("scaleFactor").getValue();
   }
   
   public int[] processImage(PImage img){ 
     values = new int[256][0][2];
+    lines = new int[256][0][2];
     numberRows = floor(img.height / getCellHeight());
     numberCells = floor(img.width / getCellWidth());
     
+    // determin the brightness for each reagion (pixelate)
     for (int x=getCellWidth()/2; x<numberCells*getCellWidth(); x+=getCellWidth()){
       for (int y=getCellHeight()/2; y<numberRows*getCellHeight(); y+=getCellHeight()){
         int brightness=0;
@@ -82,40 +115,21 @@ class RendererConnectDarkest extends Renderer{
           }
         }
         brightness = brightness/sampleSize;
-        values[brightness]=(int[][])append(values[brightness], new int[] {x,y});
+        values[brightness]=(int[][])append(values[brightness], new int[] {x*getScaleFactor(),y*getScaleFactor()});
       }
     }
-    
-    int[] wh = new int[2];
-    wh[0] = img.width*getScaleFactor();
-    wh[1] = img.height*getScaleFactor();
-    return wh;
-  }
-      
-  public int draw(PGraphics displayCanvas, PImage image){
-    
-    displayCanvas.beginDraw();
-    displayCanvas.stroke(100, 255); 
-    displayCanvas.curveTightness(0);
-    displayCanvas.noFill();
-    // TODO: make the distance traveled affect the line thickness or alpha. Further = faster = lighter.
-    // TODO: try to draw one curve for each level, rather than one constant curve
-    displayCanvas.beginShape();
-    // TODO: parameterize the min and max brightness values 
-    for (int b = 0; b<255; b++){
-      // TODO: parameterixe if stroke alpha should be based on the brightness of the pixels
-      displayCanvas.stroke(100, 255-b); 
-      // just connect them in the order they appear
-      //for (int point = 0; point<values[b].length; point++){
-      //  displayCanvas.curveVertex(values[b][point][0], values[b][point][1]);
-      //}
-      
+    int first = -1;
+    int[] latest = {};
+    // create lines based on each brightness level
+    for (int b = getMinBrightness(); b<getMaxBrightness(); b++){
       if (values[b].length>0){
-        // first pick a random 1
-        int first = int(random(values[b].length));
-        int[] latest = values[b][first];
-        println(values[b][first][0]+","+values[b][first][1]);
-        displayCanvas.curveVertex(values[b][first][0], values[b][first][1]);
+        // first pick a random cell
+        if (first<0){
+          first = int(random(values[b].length));
+          latest = values[b][first];
+          lines[b] = (int[][])append(lines[b], new int[] {values[b][first][0], values[b][first][1]});
+        }
+        
         // remove it
         values[b] = slice(values[b], first);
         
@@ -131,23 +145,64 @@ class RendererConnectDarkest extends Renderer{
             }
           }
           
-          latest = values[b][closestindex];
-          println(values[b][closestindex][0]+","+values[b][closestindex][1]);
-          // TODO: do this work in process image and build a list of vectors.
-          displayCanvas.curveVertex(values[b][closestindex][0], values[b][closestindex][1]);
+          latest = values[b][closestindex]; 
+          lines[b] = (int[][])append(lines[b], new int[] {values[b][closestindex][0], values[b][closestindex][1]});
+       
           // remove it
           values[b] = slice(values[b], closestindex);
           
         }
       }
     }
+    // TODO: create line segments based on curves, then use those to draw so you can make thicknesses etc dynamic based on distance.
+    
+    int[] wh = new int[2];
+    wh[0] = img.width*getScaleFactor();
+    wh[1] = img.height*getScaleFactor();
+    return wh;
+  }
+      
+  public int draw(PGraphics displayCanvas, PImage image){
+    // you can draw each individual layer brightness as a line, however, curves seem to need 3 or 4 points to render.
+    // after experimenting, I think the output is nicer when drawn as one long line
+
+    displayCanvas.beginDraw();
+    displayCanvas.curveTightness(0);
+    displayCanvas.noFill();
+    // TODO: make the distance traveled affect the line thickness or alpha. Further = faster = lighter
+    // TODO: if you break curve into segments for the bitmap drawing as well as the SVG, you can vary line thickness rather than the curve
+    displayCanvas.beginShape();     
+    for (int b=getMinBrightness(); b<getMaxBrightness(); b++){
+      if (lines[b].length>0){
+       
+        // TODO: parameterize if stroke alpha should be based on the brightness of the pixels
+        displayCanvas.stroke(100, 255-b); 
+        
+        for (int p=0; p<lines[b].length;p++){
+          displayCanvas.curveVertex(lines[b][p][0], lines[b][p][1]);
+        }
+      }
+    }
     displayCanvas.endShape();
+    
+    // TODO: make drawing the points optional
+    for (int b=getMinBrightness(); b<getMaxBrightness(); b++){
+      if (lines[b].length>0){
+         // TODO: parameterize if stroke alpha should be based on the brightness of the pixels
+         displayCanvas.fill(100, 255-b); 
+         displayCanvas.noStroke();
+         for (int p=1; p<lines[b].length-1;p++){
+           // TODO: parameterize the size of the points
+           displayCanvas.ellipse(lines[b][p][0], lines[b][p][1], 2*getScaleFactor(), 2*getScaleFactor());
+         }
+      } 
+    }
+    
     displayCanvas.endDraw();
     return DRAWING_DONE;
   }
   
   public String[] getSVGData(String[] FileOutput, PImage image){ 
-   
     return FileOutput;
   }
 }

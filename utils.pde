@@ -49,8 +49,6 @@ float[][] curvesToPoints(int[][] line, float curveTightness){
     for (int s=0; s<segments; s++){
       float xVal = curvePoint(x1, x2, x3, x4, s/(float) segments);
       float yVal = curvePoint(y1, y2, y3, y4, s/(float) segments);
-      println(x1+", "+xVal);
-      println(y1+", "+yVal);
       segmentedPoints = (float[][])append(segmentedPoints, new float[] {xVal, yVal});
     }
    
