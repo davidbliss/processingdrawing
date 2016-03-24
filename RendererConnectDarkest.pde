@@ -6,8 +6,8 @@ class RendererConnectDarkest extends Renderer{
   int numberCells;
   
   int[][][] values = new int[256][0][2];
-  int[][][] vertexes = new int[256][0][2];
-  float[][][] lineCoords = new float[256][0][2];
+  int[][] vertexes = new int[0][2];
+  float[][] lineCoords = new float[0][2];
   
   RendererConnectDarkest(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
     settingsGroup = cp5.addGroup("settingsGroup")
@@ -112,8 +112,8 @@ class RendererConnectDarkest extends Renderer{
   
   public int[] processImage(PImage img){ 
     values = new int[256][0][2];
-    vertexes = new int[256][0][2];
-    lineCoords = new float[256][0][2];
+    vertexes = new int[0][2];
+    lineCoords = new float[0][2];
     numberRows = floor(img.height / getCellHeight());
     numberCells = floor(img.width / getCellWidth());
     
@@ -141,7 +141,7 @@ class RendererConnectDarkest extends Renderer{
         if (first<0){
           first = int(random(values[b].length));
           latest = values[b][first];
-          vertexes[b] = (int[][])append(vertexes[b], new int[] {values[b][first][0], values[b][first][1]});
+          vertexes = (int[][])append(vertexes, new int[] {values[b][first][0], values[b][first][1]});
         }
         
         // remove it
@@ -160,18 +160,15 @@ class RendererConnectDarkest extends Renderer{
           }
           
           latest = values[b][closestindex]; 
-          vertexes[b] = (int[][])append(vertexes[b], new int[] {values[b][closestindex][0], values[b][closestindex][1]});
+          vertexes = (int[][])append(vertexes, new int[] {values[b][closestindex][0], values[b][closestindex][1]});
        
           // remove it
           values[b] = slice(values[b], closestindex);
-          
         }
       }
     }
     
-    for (int l=0; l<vertexes.length; l++){
-      lineCoords[l] = curvesToPoints(vertexes[l], getCurveTightness());
-    }
+    lineCoords = curvesToPoints(vertexes, getCurveTightness());
     
     int[] wh = new int[2];
     wh[0] = img.width*getScaleFactor();
@@ -185,29 +182,36 @@ class RendererConnectDarkest extends Renderer{
 
     displayCanvas.beginDraw();
     displayCanvas.noFill();
-    displayCanvas.beginShape();     
-    for (int b=getMinBrightness(); b<getMaxBrightness(); b++){
-      if (lineCoords[b].length>1){
-        for (int l=0; l<lineCoords[b].length-1; l++){
-          // TODO: Tune this use of distance to adjust these parameters
-          // TODO: consider just ignoring points of a certain distance
-          float distance = distanceBetween2Points(lineCoords[b][l], lineCoords[b][l+1]);
-          displayCanvas.stroke(100, 255-(150*(1-distance/100)));
-          displayCanvas.strokeWeight( 3*(1-distance/100) );
-          displayCanvas.strokeCap(SQUARE);
-          displayCanvas.line(lineCoords[b][l][0], lineCoords[b][l][1], lineCoords[b][l+1][0], lineCoords[b][l+1][1]);
-        }
-        
-        // TODO: make drawing the points optional
-        displayCanvas.fill(100, 255-b); 
-        displayCanvas.noStroke();
-        for (int p=1; p<vertexes[b].length-1;p++){
-          // TODO: parameterize the size of the points
-          //displayCanvas.ellipse(vertexes[b][p][0], vertexes[b][p][1], 2*getScaleFactor(), 2*getScaleFactor());
-        }
+    displayCanvas.beginShape(); 
+    
+    //for (int l=0; l<vertexes.length; l++){
+    //  displayCanvas.stroke(255,0,0,255);
+    //  displayCanvas.strokeWeight(1);
+    //  displayCanvas.strokeCap(SQUARE);
+    //  displayCanvas.curveVertex(vertexes[l][0]+20, vertexes[l][1]+20);
+    //}
+     
+    displayCanvas.endShape();
+    for (int l=0; l<lineCoords.length-1; l++){
+      // TODO: Tune this use of distance to adjust these parameters
+      // TODO: consider just ignoring points of a certain distance
+      float distance = distanceBetween2Points(lineCoords[l], lineCoords[l+1]);
+      displayCanvas.stroke(100, 255-(150*(distance/100)));
+      displayCanvas.strokeWeight( 2*(1-distance/100) );
+      displayCanvas.strokeCap(SQUARE);
+      displayCanvas.line(lineCoords[l][0], lineCoords[l][1], lineCoords[l+1][0], lineCoords[l+1][1]);
+    }
+      
+    // TODO: make drawing the points optional
+    for (int b = getMinBrightness(); b<getMaxBrightness(); b++){
+      displayCanvas.fill(100, 100); 
+      displayCanvas.noStroke();
+      for (int p=1; p<values[b].length;p++){
+        // TODO: parameterize the size of the points
+        displayCanvas.ellipse(values[b][p][0], values[b][p][1], 2*getScaleFactor(), 2*getScaleFactor());
       }
     }
-    displayCanvas.endShape();
+    
     displayCanvas.endDraw();
     return DRAWING_DONE;
   }
