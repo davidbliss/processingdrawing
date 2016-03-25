@@ -8,6 +8,8 @@ class RendererConnectDarkest extends Renderer{
   int[][][] values = new int[256][0][2];
   int[][] vertexes = new int[0][2];
   float[][] lineCoords = new float[0][2];
+  float minDistance = 1000;
+  float maxDistance = 0;
   
   RendererConnectDarkest(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
     settingsGroup = cp5.addGroup("settingsGroup")
@@ -73,13 +75,52 @@ class RendererConnectDarkest extends Renderer{
      .snapToTickMarks(true)
      ;
     
+    cp5.addSlider("minStrokeDarkness")
+     .setLabel("min stroke darkness")
+     .setPosition(5, cp5.get("scaleFactor").getHeight() + cp5.get("scaleFactor").getPosition()[1] + controlsVOffset)
+     .setRange(1,255)
+     .setGroup(settingsGroup)
+     .setValue(155)
+     .setNumberOfTickMarks(255)
+     .showTickMarks(false)
+     .snapToTickMarks(true)
+     ;
+     
+    cp5.addSlider("maxStrokeDarkness")
+     .setLabel("max stroke darkness")
+     .setPosition(cp5.get("minStrokeDarkness").getWidth() + cp5.get("minStrokeDarkness").getPosition()[0] + 100, cp5.get("minStrokeDarkness").getPosition()[1])
+     .setRange(1,255)
+     .setGroup(settingsGroup)
+     .setValue(255)
+     .setNumberOfTickMarks(255)
+     .showTickMarks(false)
+     .snapToTickMarks(true)
+     ;
+    
+    cp5.addSlider("minStrokeWeight")
+     .setLabel("min stroke weight")
+     .setPosition(5, cp5.get("minStrokeDarkness").getHeight() + cp5.get("minStrokeDarkness").getPosition()[1] + controlsVOffset)
+     .setRange(0,5)
+     .setGroup(settingsGroup)
+     .setValue(0.5)
+     ;
+     
+    cp5.addSlider("maxStrokeWeight")
+     .setLabel("max stroke weight")
+     .setPosition(cp5.get("minStrokeWeight").getWidth() + cp5.get("minStrokeWeight").getPosition()[0] + 100, cp5.get("minStrokeWeight").getPosition()[1])
+     .setRange(0,5)
+     .setGroup(settingsGroup)
+     .setValue(1.5)
+     ;
+    
     cp5.addSlider("curveTightness")
      .setLabel("curve tightness")
-     .setPosition(5, cp5.get("scaleFactor").getHeight() + cp5.get("scaleFactor").getPosition()[1]+ controlsVOffset)
+     .setPosition(5, cp5.get("minStrokeWeight").getHeight() + cp5.get("minStrokeWeight").getPosition()[1]+ controlsVOffset)
      .setRange(-5,5)
      .setGroup(settingsGroup)
      .setValue(0.0)
      ;
+   
   }
   
   public void cleanUp(){
@@ -92,6 +133,22 @@ class RendererConnectDarkest extends Renderer{
   
   private int getCellHeight(){
     return (int) cp5.getController("cellHeight").getValue();
+  }
+  
+  private int getMinStrokeDarkness(){
+    return (int) cp5.getController("minStrokeDarkness").getValue();
+  }
+  
+  private int getMaxStrokeDarkness(){
+    return (int) cp5.getController("maxStrokeDarkness").getValue();
+  }
+  
+  private float getMinStrokeWeight(){
+    return (float) cp5.getController("minStrokeWeight").getValue();
+  }
+  
+  private float getMaxStrokeWeight(){
+    return (float) cp5.getController("maxStrokeWeight").getValue();
   }
   
   private int getMaxBrightness(){
@@ -170,9 +227,31 @@ class RendererConnectDarkest extends Renderer{
     
     lineCoords = curvesToPoints(vertexes, getCurveTightness());
     
+    for (int l=0; l<lineCoords.length-1; l++){
+      float distance = distanceBetween2Points(lineCoords[l], lineCoords[l+1]);
+      if (distance<minDistance) minDistance=distance;
+      if (distance>maxDistance) maxDistance=distance;
+    }
+    
+    // find the minimum and maximum values to use as bounding box
+    float minX = 0, minY = 0, maxX = 0, maxY = 0;
+    for (int point = 0; point<lineCoords.length; point++){
+      if (lineCoords[point][0] < minX) minX = lineCoords[point][0];
+      if (lineCoords[point][0] > maxX) maxX = lineCoords[point][0];
+      
+      if (lineCoords[point][1] < minY) minY = lineCoords[point][1];
+      if (lineCoords[point][1] > maxY) maxY = lineCoords[point][1];
+    }
+    for (int point = 0; point<lineCoords.length; point++){
+      lineCoords[point][1] -= (minY-5*getScaleFactor());
+      lineCoords[point][0] -= (minX-5*getScaleFactor());
+    }
+    maxY -= (minY-5*getScaleFactor());
+    maxX -= (minX-5*getScaleFactor());
+    
     int[] wh = new int[2];
-    wh[0] = img.width*getScaleFactor();
-    wh[1] = img.height*getScaleFactor();
+    wh[0] = ceil(maxX)+10*getScaleFactor();
+    wh[1] = ceil(maxY)+10*getScaleFactor();
     return wh;
   }
       
@@ -184,32 +263,13 @@ class RendererConnectDarkest extends Renderer{
     displayCanvas.noFill();
     displayCanvas.beginShape(); 
     
-    //for (int l=0; l<vertexes.length; l++){
-    //  displayCanvas.stroke(255,0,0,255);
-    //  displayCanvas.strokeWeight(1);
-    //  displayCanvas.strokeCap(SQUARE);
-    //  displayCanvas.curveVertex(vertexes[l][0]+20, vertexes[l][1]+20);
-    //}
-     
     displayCanvas.endShape();
     for (int l=0; l<lineCoords.length-1; l++){
-      // TODO: Tune this use of distance to adjust these parameters
-      // TODO: consider just ignoring points of a certain distance
       float distance = distanceBetween2Points(lineCoords[l], lineCoords[l+1]);
-      displayCanvas.stroke(100, 255-(150*(distance/100)));
-      displayCanvas.strokeWeight( 2*(1-distance/100) );
+      displayCanvas.stroke(0, map(distance, minDistance, maxDistance, getMinStrokeDarkness(), getMaxStrokeDarkness()));
+      displayCanvas.strokeWeight( map(distance, minDistance, maxDistance, getMinStrokeWeight(), getMaxStrokeWeight()));
       displayCanvas.strokeCap(SQUARE);
       displayCanvas.line(lineCoords[l][0], lineCoords[l][1], lineCoords[l+1][0], lineCoords[l+1][1]);
-    }
-      
-    // TODO: make drawing the points optional
-    for (int b = getMinBrightness(); b<getMaxBrightness(); b++){
-      displayCanvas.fill(100, 100); 
-      displayCanvas.noStroke();
-      for (int p=1; p<values[b].length;p++){
-        // TODO: parameterize the size of the points
-        displayCanvas.ellipse(values[b][p][0], values[b][p][1], 2*getScaleFactor(), 2*getScaleFactor());
-      }
     }
     
     displayCanvas.endDraw();
@@ -217,6 +277,20 @@ class RendererConnectDarkest extends Renderer{
   }
   
   public String[] getSVGData(String[] FileOutput, PImage image){ 
+    String rowTemp;
+    
+      
+    // draw the lines
+    for (int i=0; i<lineCoords.length-1; i++){
+      float distance = distanceBetween2Points(lineCoords[i], lineCoords[i+1]);
+      rowTemp = "<path style=\"fill:none;stroke:black;stroke-opacity:"+map(distance, minDistance, maxDistance, getMinStrokeDarkness(), getMaxStrokeDarkness())/255.0+";stroke-width:"+map(distance, minDistance, maxDistance, getMinStrokeWeight(), getMaxStrokeWeight())+"px;stroke-linejoin:round;stroke-linecap:square;\" d=\"M ";
+      FileOutput = append(FileOutput, rowTemp);
+      rowTemp = lineCoords[i][0] + " " + lineCoords[i][1] + "\r";
+      FileOutput = append(FileOutput, rowTemp);
+      rowTemp = lineCoords[i+1][0] + " " + lineCoords[i+1][1] + "\r";
+      FileOutput = append(FileOutput, rowTemp);
+      FileOutput = append(FileOutput, "\" />"); // End path description
+    }
     return FileOutput;
   }
 }
