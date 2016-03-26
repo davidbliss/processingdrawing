@@ -266,8 +266,9 @@ class RendererConnectDarkest extends Renderer{
     displayCanvas.endShape();
     for (int l=0; l<lineCoords.length-1; l++){
       float distance = distanceBetween2Points(lineCoords[l], lineCoords[l+1]);
-      displayCanvas.stroke(0, getMaxStrokeDarkness() - map(distance, minDistance, maxDistance, getMinStrokeDarkness(), getMaxStrokeDarkness()));
-      displayCanvas.strokeWeight( getMaxStrokeWeight() - map(distance, minDistance, maxDistance, getMinStrokeWeight(), getMaxStrokeWeight()));
+      float invertDistance = map(distance, minDistance, maxDistance, 1, 0);
+      displayCanvas.stroke(0, map(invertDistance, 0, 1, getMinStrokeDarkness(), getMaxStrokeDarkness()));
+      displayCanvas.strokeWeight( map(invertDistance, 0, 1, getMinStrokeWeight(), getMaxStrokeWeight()));
       displayCanvas.strokeCap(SQUARE);
       displayCanvas.line(lineCoords[l][0], lineCoords[l][1], lineCoords[l+1][0], lineCoords[l+1][1]);
     }
