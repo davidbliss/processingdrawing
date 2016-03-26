@@ -266,8 +266,8 @@ class RendererConnectDarkest extends Renderer{
     displayCanvas.endShape();
     for (int l=0; l<lineCoords.length-1; l++){
       float distance = distanceBetween2Points(lineCoords[l], lineCoords[l+1]);
-      displayCanvas.stroke(0, map(distance, minDistance, maxDistance, getMinStrokeDarkness(), getMaxStrokeDarkness()));
-      displayCanvas.strokeWeight( map(distance, minDistance, maxDistance, getMinStrokeWeight(), getMaxStrokeWeight()));
+      displayCanvas.stroke(0, getMaxStrokeDarkness() - map(distance, minDistance, maxDistance, getMinStrokeDarkness(), getMaxStrokeDarkness()));
+      displayCanvas.strokeWeight( getMaxStrokeWeight() - map(distance, minDistance, maxDistance, getMinStrokeWeight(), getMaxStrokeWeight()));
       displayCanvas.strokeCap(SQUARE);
       displayCanvas.line(lineCoords[l][0], lineCoords[l][1], lineCoords[l+1][0], lineCoords[l+1][1]);
     }
@@ -283,7 +283,8 @@ class RendererConnectDarkest extends Renderer{
     // draw the lines
     for (int i=0; i<lineCoords.length-1; i++){
       float distance = distanceBetween2Points(lineCoords[i], lineCoords[i+1]);
-      rowTemp = "<path style=\"fill:none;stroke:black;stroke-opacity:"+map(distance, minDistance, maxDistance, getMinStrokeDarkness(), getMaxStrokeDarkness())/255.0+";stroke-width:"+map(distance, minDistance, maxDistance, getMinStrokeWeight(), getMaxStrokeWeight())+"px;stroke-linejoin:round;stroke-linecap:square;\" d=\"M ";
+      float invertDistance = map(distance, minDistance, maxDistance, 1, 0);
+      rowTemp = "<path style=\"fill:none;stroke:black;stroke-opacity:"+map(invertDistance, 0, 1, getMinStrokeDarkness(), getMaxStrokeDarkness())/255.0+";stroke-width:"+map(invertDistance, 0, 1, getMinStrokeWeight(), getMaxStrokeWeight())+"px;stroke-linejoin:round;stroke-linecap:square;\" d=\"M ";
       FileOutput = append(FileOutput, rowTemp);
       rowTemp = lineCoords[i][0] + " " + lineCoords[i][1] + "\r";
       FileOutput = append(FileOutput, rowTemp);
