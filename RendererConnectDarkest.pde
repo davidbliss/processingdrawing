@@ -74,6 +74,17 @@ class RendererConnectDarkest extends Renderer{
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
+     
+    cp5.addSlider("maxLength")
+     .setLabel("maximum length drawn")
+     .setPosition(cp5.get("maxBrightness").getPosition()[0],  cp5.get("maxBrightness").getHeight() + cp5.get("maxBrightness").getPosition()[1] + controlsVOffset)
+     .setRange(0,300)
+     .setGroup(settingsGroup)
+     .setValue(300)
+     .setNumberOfTickMarks(256)
+     .showTickMarks(false)
+     .snapToTickMarks(true)
+     ;
     
     cp5.addSlider("minStrokeDarkness")
      .setLabel("min stroke darkness")
@@ -159,6 +170,10 @@ class RendererConnectDarkest extends Renderer{
     return (int) cp5.getController("minBrightness").getValue();
   }
   
+  private int getMaxLength(){
+    return (int) cp5.getController("maxLength").getValue();
+  }
+  
   private int getScaleFactor(){
     return (int) cp5.getController("scaleFactor").getValue();
   }
@@ -189,6 +204,7 @@ class RendererConnectDarkest extends Renderer{
         values[brightness]=(int[][])append(values[brightness], new int[] {x*getScaleFactor(),y*getScaleFactor()});
       }
     }
+    
     int first = -1;
     int[] latest = {};
     // create vertexes based on each brightness level
@@ -266,11 +282,13 @@ class RendererConnectDarkest extends Renderer{
     displayCanvas.endShape();
     for (int l=0; l<lineCoords.length-1; l++){
       float distance = distanceBetween2Points(lineCoords[l], lineCoords[l+1]);
-      float invertDistance = map(distance, minDistance, maxDistance, 1, 0);
-      displayCanvas.stroke(0, map(invertDistance, 0, 1, getMinStrokeDarkness(), getMaxStrokeDarkness()));
-      displayCanvas.strokeWeight( map(invertDistance, 0, 1, getMinStrokeWeight(), getMaxStrokeWeight()));
-      displayCanvas.strokeCap(SQUARE);
-      displayCanvas.line(lineCoords[l][0], lineCoords[l][1], lineCoords[l+1][0], lineCoords[l+1][1]);
+      if (distance<getMaxLength()){
+        float invertDistance = map(distance, minDistance, maxDistance, 1, 0);
+        displayCanvas.stroke(0, map(invertDistance, 0, 1, getMinStrokeDarkness(), getMaxStrokeDarkness()));
+        displayCanvas.strokeWeight( map(invertDistance, 0, 1, getMinStrokeWeight(), getMaxStrokeWeight()));
+        displayCanvas.strokeCap(SQUARE);
+        displayCanvas.line(lineCoords[l][0], lineCoords[l][1], lineCoords[l+1][0], lineCoords[l+1][1]);
+      }
     }
     
     displayCanvas.endDraw();
@@ -284,14 +302,16 @@ class RendererConnectDarkest extends Renderer{
     // draw the lines
     for (int i=0; i<lineCoords.length-1; i++){
       float distance = distanceBetween2Points(lineCoords[i], lineCoords[i+1]);
-      float invertDistance = map(distance, minDistance, maxDistance, 1, 0);
-      rowTemp = "<path style=\"fill:none;stroke:black;stroke-opacity:"+map(invertDistance, 0, 1, getMinStrokeDarkness(), getMaxStrokeDarkness())/255.0+";stroke-width:"+map(invertDistance, 0, 1, getMinStrokeWeight(), getMaxStrokeWeight())+"px;stroke-linejoin:round;stroke-linecap:square;\" d=\"M ";
-      FileOutput = append(FileOutput, rowTemp);
-      rowTemp = lineCoords[i][0] + " " + lineCoords[i][1] + "\r";
-      FileOutput = append(FileOutput, rowTemp);
-      rowTemp = lineCoords[i+1][0] + " " + lineCoords[i+1][1] + "\r";
-      FileOutput = append(FileOutput, rowTemp);
-      FileOutput = append(FileOutput, "\" />"); // End path description
+      if (distance<getMaxLength()){
+        float invertDistance = map(distance, minDistance, maxDistance, 1, 0);
+        rowTemp = "<path style=\"fill:none;stroke:black;stroke-opacity:"+map(invertDistance, 0, 1, getMinStrokeDarkness(), getMaxStrokeDarkness())/255.0+";stroke-width:"+map(invertDistance, 0, 1, getMinStrokeWeight(), getMaxStrokeWeight())+"px;stroke-linejoin:round;stroke-linecap:square;\" d=\"M ";
+        FileOutput = append(FileOutput, rowTemp);
+        rowTemp = lineCoords[i][0] + " " + lineCoords[i][1] + "\r";
+        FileOutput = append(FileOutput, rowTemp);
+        rowTemp = lineCoords[i+1][0] + " " + lineCoords[i+1][1] + "\r";
+        FileOutput = append(FileOutput, rowTemp);
+        FileOutput = append(FileOutput, "\" />"); // End path description
+      }
     }
     return FileOutput;
   }
