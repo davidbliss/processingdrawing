@@ -42,10 +42,10 @@ class RendererContours extends Renderer{
    cp5.addSlider("drawLineAlpha")
      .setLabel("line alpha")
      .setPosition(5, cp5.get("factor").getHeight() + cp5.get("factor").getPosition()[1] + controlsVOffset)
-     .setRange(0,100)
+     .setRange(0,255)
      .setGroup(settingsGroup)
      .setValue(75)
-     .setNumberOfTickMarks(101)
+     .setNumberOfTickMarks(256)
      .showTickMarks(false)
      .snapToTickMarks(true)
      ;
@@ -77,6 +77,8 @@ class RendererContours extends Renderer{
       theBlobDetection[i].computeBlobs(img.pixels);
     }
     
+    // TODO: try to order each contour, connecting each edgeb with an edgea.
+    
     p1=0;
     
     int[] wh = new int[2];
@@ -87,22 +89,33 @@ class RendererContours extends Renderer{
     
   public int draw(PGraphics displayCanvas, PImage image){
     displayCanvas.beginDraw();
+    displayCanvas.strokeWeight(1);
     displayCanvas.stroke(0, getAlpha());
+    displayCanvas.noFill();
     
     Blob b;
-    EdgeVertex eA,eB;
+    EdgeVertex eA,previouseA=null;
     for (int n=0 ; n<theBlobDetection[p1].getBlobNb() ; n++) {
       b=theBlobDetection[p1].getBlob(n);
       if (b!=null) {
         for (int m=0;m<b.getEdgeNb();m++) {
           eA = b.getEdgeVertexA(m);
-          eB = b.getEdgeVertexB(m);
-          if (eA !=null && eB !=null) {
-            displayCanvas.line(
-            eA.x*displayCanvas.width, eA.y*displayCanvas.height, 
-            eB.x*displayCanvas.width, eB.y*displayCanvas.height 
-              );
-          } 
+          
+          if (previouseA == null){
+            displayCanvas.beginShape();
+            displayCanvas.vertex(eA.x*displayCanvas.width, eA.y*displayCanvas.height);
+            
+            previouseA = eA;
+          } else {
+            if (distanceBetween2Points(new float[]{eA.x, eA.y}, new float[] {previouseA.x, previouseA.y})<.01){
+              
+              displayCanvas.vertex(eA.x*displayCanvas.width, eA.y*displayCanvas.height);
+              previouseA = eA;
+            } else {
+              previouseA=null;
+              displayCanvas.endShape();
+            }
+          }
         }
       }
     }
