@@ -5,9 +5,8 @@ class RendererContours extends Renderer{
   // This rendered will find edges in the image in the form of contours and draw them. 
   
   BlobDetection[] theBlobDetection;
-  int p1=0;
   Group settingsGroup;
-  
+  float[][][] lines;
   RendererContours(ControlP5 cp5, int settingsGroupX, int settingsGroupY){
     
     settingsGroup = cp5.addGroup("settingsGroup")
@@ -68,6 +67,7 @@ class RendererContours extends Renderer{
   }
   
   public int[] processImage(PImage img){ 
+    lines = new float[0][0][2];
     //Computing Blobs with different thresholds 
     theBlobDetection = new BlobDetection[int(getLevels())];
     
@@ -77,9 +77,33 @@ class RendererContours extends Renderer{
       theBlobDetection[i].computeBlobs(img.pixels);
     }
     
-    // TODO: try to order each contour, connecting each edgeb with an edgea.
-    
-    p1=0;
+    Blob b;
+    EdgeVertex eA, previouseA=null;
+    for (int level=0; level<getLevels(); level++){
+      for (int n=0 ; n<theBlobDetection[level].getBlobNb() ; n++) {
+        b=theBlobDetection[level].getBlob(n);
+        if (b!=null) {
+          float[][]line=new float[0][2];
+          for (int m=0;m<b.getEdgeNb();m++) {
+            eA = b.getEdgeVertexA(m);
+            if (previouseA == null){
+              line = (float[][])append(line, new float[]{eA.x, eA.y});
+              previouseA = eA;
+            } else {
+              if (distanceBetween2Points(new float[]{eA.x, eA.y}, new float[] {previouseA.x, previouseA.y})<.01){ 
+                line = (float[][])append(line, new float[]{eA.x, eA.y});
+                previouseA = eA;
+              } else {
+                if (line.length>0) lines = (float[][][]) append(lines, line);
+                line=new float[0][2];
+                previouseA=null;
+              }
+            }
+          }
+          if (line.length>0) lines = (float[][][]) append(lines, line);
+        }
+      }
+    }
     
     int[] wh = new int[2];
     wh[0] = img.width*getFactor();
@@ -92,71 +116,33 @@ class RendererContours extends Renderer{
     displayCanvas.strokeWeight(1);
     displayCanvas.stroke(0, getAlpha());
     displayCanvas.noFill();
-    
-    Blob b;
-    EdgeVertex eA,previouseA=null;
-    for (int n=0 ; n<theBlobDetection[p1].getBlobNb() ; n++) {
-      b=theBlobDetection[p1].getBlob(n);
-      if (b!=null) {
-        for (int m=0;m<b.getEdgeNb();m++) {
-          eA = b.getEdgeVertexA(m);
-          
-          if (previouseA == null){
-            displayCanvas.beginShape();
-            displayCanvas.vertex(eA.x*displayCanvas.width, eA.y*displayCanvas.height);
-            
-            previouseA = eA;
-          } else {
-            if (distanceBetween2Points(new float[]{eA.x, eA.y}, new float[] {previouseA.x, previouseA.y})<.01){
-              
-              displayCanvas.vertex(eA.x*displayCanvas.width, eA.y*displayCanvas.height);
-              previouseA = eA;
-            } else {
-              previouseA=null;
-              displayCanvas.endShape();
-            }
-          }
-        }
+    for (int line=0; line<lines.length; line++){
+      displayCanvas.beginShape();
+      for (int point=0; point<lines[line].length; point++){
+        displayCanvas.vertex(lines[line][point][0]*displayCanvas.width, lines[line][point][1]*displayCanvas.height);
       }
+      displayCanvas.endShape();
     }
     displayCanvas.endDraw();
-    p1++;
-    cp5.get("progress").setValue((int)((float)p1/getLevels()*100));
-    if (p1 >= getLevels()){
-      return DRAWING_DONE;
-    } else {
-      return DRAWING;
-    }
+    
+    return DRAWING_DONE;
   }
 
   public String[] getSVGData(String[] FileOutput, PImage image){ 
     Blob b;
     EdgeVertex eA,eB;
     String rowTemp;
-    for (int blob=0 ; blob<theBlobDetection.length; blob++){
-      for (int n=0 ; n<theBlobDetection[blob].getBlobNb() ; n++) {
-        b=theBlobDetection[blob].getBlob(n);
-        if (b!=null) {
-          for (int m=0;m<b.getEdgeNb();m++) {
-            // eB of point m equals aA of point m-1
-            // if you just connect all the eA values you miss the last segment (don't close a closed path)
-            // sometimes the 2 points of the edge are the same, they should be ignored
-            // just connecting eA of the points shows that the order of edges is not entirely (open shapes are broken closed), so we draw an individual line for each edge
-            eA = b.getEdgeVertexA(m);
-            eB = b.getEdgeVertexB(m);
-            if (eA !=null && eB !=null && !(eA.x==eB.x&&eA.y==eB.y) ){
-              rowTemp = "<path style=\"fill:none;stroke:black;stroke-opacity:"+getAlpha()/100.0+";stroke-width:1px;stroke-linejoin:round;stroke-linecap:round;\" d=\"M ";
-              FileOutput = append(FileOutput, rowTemp);
-              rowTemp = eA.x*image.width*getFactor() + " " + eA.y*image.height*getFactor() + "\r";
-              FileOutput = append(FileOutput, rowTemp);
-              rowTemp = eB.x*image.width*getFactor() + " " + eB.y*image.height*getFactor() + "\r";
-              FileOutput = append(FileOutput, rowTemp);
-              FileOutput = append(FileOutput, "\" />"); // End path description
-            } 
-          }
-        }
+    
+    for (int line=0; line<lines.length; line++){
+      rowTemp = "<path style=\"fill:none;stroke:black;stroke-opacity:"+getAlpha()/100.0+";stroke-width:1px;stroke-linejoin:round;stroke-linecap:round;\" d=\"M ";
+      FileOutput = append(FileOutput, rowTemp);
+      for (int point=0; point<lines[line].length; point++){
+        rowTemp = lines[line][point][0]*image.width*getFactor() + " " + lines[line][point][1]*image.height*getFactor() + "\r";
+        FileOutput = append(FileOutput, rowTemp);
       }
+      FileOutput = append(FileOutput, "\" />"); // End path description
     }
+    
     return FileOutput;
   }
 }
